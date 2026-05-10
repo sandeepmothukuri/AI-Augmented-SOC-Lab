@@ -294,3 +294,7 @@ Pull requests welcome. See [docs/setup-guide.md](docs/setup-guide.md) to get sta
 | [soc-lab-free](https://github.com/sandeepmothukuri/soc-lab-free) | Free SOC lab — OpenVAS, Wazuh, pfSense, Proxmox Mail, Lynis |
 | [soc-lab](https://github.com/sandeepmothukuri/soc-lab) | SOC analyst home lab — Wazuh SIEM, Sysmon, MITRE ATT&CK mapping |
 | [cyberblue](https://github.com/sandeepmothukuri/cyberblue) | Containerised blue team platform — SIEM, DFIR, CTI, SOAR, Network Analysis |
+
+
+---
+⭐ **Star this repo if it helped you — it helps other SOC analysts find it!**
