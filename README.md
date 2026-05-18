@@ -278,7 +278,7 @@ Pull requests welcome. See [docs/setup-guide.md](docs/setup-guide.md) to get sta
 **Sandeep Mothukuri**
 - GitHub: [@sandeepmothukuri](https://github.com/sandeepmothukuri)
 - Website: [cybertechnology.in](https://cybertechnology.in)
-- LinkedIn: [linkedin.com/in/sandeepmothukuris](https://www.linkedin.com/in/sandeepmothukuris)
+- LinkedIn: [linkedin.com/in/sandeepmothukuri](https://www.linkedin.com/in/sandeepmothukuri)
 - Email: sandeep.mothukuris@gmail.com
 
 ---
