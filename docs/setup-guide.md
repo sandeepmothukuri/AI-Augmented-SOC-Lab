@@ -38,8 +38,8 @@ sudo sysctl -p
 ## Step 2: Clone and Deploy
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/ai-soc-lab.git
-cd ai-soc-lab
+git clone https://github.com/YOUR_USERNAME/ai-SOC-Detection-and-Threat-Hunting-Lab.git
+cd ai-SOC-Detection-and-Threat-Hunting-Lab
 
 chmod +x scripts/*.sh
 ./scripts/deploy.sh
