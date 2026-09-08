@@ -1,6 +1,6 @@
 # 🧠 AI-Augmented SOC Lab
 
-[![CI](https://github.com/sandeepmothukuri/ai-soc-lab/actions/workflows/ci.yml/badge.svg)](https://github.com/sandeepmothukuri/ai-soc-lab/actions) [![Website](https://img.shields.io/badge/Website-cybertechnology.in-blue)](https://cybertechnology.in) [![MITRE ATT&CK](https://img.shields.io/badge/MITRE-ATT%26CK-red)](https://attack.mitre.org/)
+[![CI](https://github.com/sandeepmothukuri/AI-Augmented-SOC-Lab/actions/workflows/ci.yml/badge.svg)](https://github.com/sandeepmothukuri/AI-Augmented-SOC-Lab/actions) [![Website](https://img.shields.io/badge/Website-cybertechnology.in-blue)](https://cybertechnology.in) [![MITRE ATT&CK](https://img.shields.io/badge/MITRE-ATT%26CK-red)](https://attack.mitre.org/)
 
 A full open-source Security Operations Center (SOC) lab enhanced with a local AI decision-support layer. Built for learning, research, and practical blue-team skill development.
 
@@ -157,8 +157,8 @@ Ask questions in plain English and get Elasticsearch DSL queries back.
 ### 1. Clone the repo
 
 ```bash
-git clone https://github.com/sandeepmothukuri/ai-soc-lab.git
-cd ai-soc-lab
+git clone https://github.com/sandeepmothukuri/AI-Augmented-SOC-Lab.git
+cd AI-Augmented-SOC-Lab
 ```
 
 ### 2. Deploy the core stack
@@ -191,7 +191,7 @@ Import the JSON files from `shuffle-workflows/` into your Shuffle instance.
 ## 📁 Project Structure
 
 ```
-ai-soc-lab/
+AI-Augmented-SOC-Lab/
 ├── docker/                    # Docker Compose configs per service
 │   ├── docker-compose.wazuh.yml
 │   ├── docker-compose.thehive.yml
@@ -287,7 +287,7 @@ Pull requests welcome. See [docs/setup-guide.md](docs/setup-guide.md) to get sta
 
 | Repository | Description |
 |---|---|
-| [ai-soc-lab](https://github.com/sandeepmothukuri/ai-soc-lab) | AI-augmented SOC with Wazuh + TheHive + Ollama (LLaMA3) for automated triage |
+| [AI-Augmented-SOC-Lab](https://github.com/sandeepmothukuri/AI-Augmented-SOC-Lab) | AI-augmented SOC with Wazuh + TheHive + Ollama (LLaMA3) for automated triage |
 | [advanced-soc-lab-v2.0](https://github.com/sandeepmothukuri/advanced-soc-lab-v2.0) | 12-tool SOC lab with OpenSearch, Suricata, Zeek, MISP, Caldera, Velociraptor |
 | [Autonomous-SOC-Lab](https://github.com/sandeepmothukuri/Autonomous-SOC-Lab) | Autonomous SOC with AI-driven detection and self-healing playbooks |
 | [soc-threat-hunting-lab](https://github.com/sandeepmothukuri/soc-threat-hunting-lab) | Threat detection lab — Zeek, RITA, Arkime, Velociraptor, OSQuery, MISP |
