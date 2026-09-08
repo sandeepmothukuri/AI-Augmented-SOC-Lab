@@ -130,7 +130,6 @@ class AlertAnalyzer:
         return {"verdict": "ENRICH", "confidence": 0.5, "reasoning": raw}
 
     async def analyze(self, alert: dict) -> dict:
-        self._stats["analyzed"] += 1
         alert_str = json.dumps(alert, indent=2)
         mitre_tactic, mitre_technique = self._map_mitre(alert.get("rule_description", ""))
         severity_normalized = self._normalize_severity(alert.get("severity", 5))
@@ -140,6 +139,7 @@ class AlertAnalyzer:
             triage = self._parse_triage_json(triage_raw)
 
             summary_raw = self.summary_chain.run(alert=alert_str)
+            self._stats["analyzed"] += 1
 
             verdict = triage.get("verdict", "ENRICH")
             if verdict == "ESCALATE":
