@@ -2,8 +2,9 @@
 TheHive API client for automated case creation.
 """
 
-import os
 import logging
+import os
+
 import httpx
 
 logger = logging.getLogger(__name__)
