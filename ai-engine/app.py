@@ -4,11 +4,10 @@ import logging
 import os
 from datetime import datetime, timezone
 
+from analyzer import AlertAnalyzer
 from fastapi import BackgroundTasks, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, ConfigDict, Field
-
-from analyzer import AlertAnalyzer
 from thehive_client import TheHiveClient
 
 logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO"))
