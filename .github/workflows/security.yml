@@ -64,6 +64,6 @@ jobs:
         with:
           persist-credentials: false
       - name: Audit workflow files
-        uses: zizmorcore/zizmor-action@v0.6.3
+        uses: zizmorcore/zizmor-action@v0.6.4
         with:
           advanced-security: true
