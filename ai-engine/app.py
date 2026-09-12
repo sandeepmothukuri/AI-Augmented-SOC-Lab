@@ -1,13 +1,8 @@
-"""
-AI SOC Engine - FastAPI server.
-Receives alert data, runs LLM analysis, and returns validated triage output.
-"""
+"""AI SOC Engine - FastAPI server."""
 
 import logging
 import os
 from datetime import datetime, timezone
-from enum import Enum
-from typing import Optional
 
 from fastapi import BackgroundTasks, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -21,65 +16,50 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI(
     title="AI SOC Engine",
-    description="LLM-powered alert triage and analysis for open-source SOC",
-    version="1.1.0",
+    description="LLM-powered alert triage and analysis for an open-source SOC lab",
+    version="1.0.0",
 )
 
 allowed_origins = [
     origin.strip()
-    for origin in os.getenv("ALLOWED_ORIGINS", "http://localhost:3000").split(",")
+    for origin in os.getenv("CORS_ALLOWED_ORIGINS", "http://localhost:3000").split(",")
     if origin.strip()
 ]
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
     allow_methods=["GET", "POST"],
-    allow_headers=["Authorization", "Content-Type"],
+    allow_headers=["Content-Type", "Authorization"],
 )
 
 analyzer = AlertAnalyzer()
 hive_client = TheHiveClient()
 
 
-class Verdict(str, Enum):
-    CLOSE = "CLOSE"
-    ESCALATE = "ESCALATE"
-    ENRICH = "ENRICH"
-
-
-class Severity(str, Enum):
-    LOW = "LOW"
-    MEDIUM = "MEDIUM"
-    HIGH = "HIGH"
-    CRITICAL = "CRITICAL"
-
-
 class AlertPayload(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    alert_id: str = Field(min_length=1, max_length=200)
-    source: str = Field(min_length=1, max_length=50)
-    rule_id: Optional[str] = Field(default=None, max_length=100)
-    rule_description: str = Field(min_length=1, max_length=2000)
+    alert_id: str = Field(min_length=1, max_length=128)
+    source: str = Field(min_length=1, max_length=32)
+    rule_id: str | None = Field(default=None, max_length=128)
+    rule_description: str = Field(min_length=1, max_length=4096)
     severity: int = Field(ge=1, le=15)
-    source_ip: Optional[str] = None
-    dest_ip: Optional[str] = None
-    hostname: Optional[str] = Field(default=None, max_length=255)
+    source_ip: str | None = None
+    dest_ip: str | None = None
+    hostname: str | None = Field(default=None, max_length=255)
     timestamp: str
-    raw_log: str = Field(min_length=1, max_length=10000)
-    misp_context: Optional[dict] = None
-    geo_info: Optional[dict] = None
+    raw_log: str = Field(min_length=1, max_length=32768)
+    misp_context: dict | None = None
+    geo_info: dict | None = None
 
 
 class TriageResult(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
     alert_id: str
-    verdict: Verdict
+    verdict: str = Field(pattern="^(CLOSE|ESCALATE|ENRICH)$")
     confidence: float = Field(ge=0.0, le=1.0)
-    severity_normalized: Severity
-    mitre_tactic: Optional[str]
-    mitre_technique: Optional[str]
+    severity_normalized: str = Field(pattern="^(LOW|MEDIUM|HIGH|CRITICAL)$")
+    mitre_tactic: str | None
+    mitre_technique: str | None
     summary: str
     response_recommendation: str
     playbook_steps: list[str]
@@ -110,21 +90,22 @@ async def analyze_alert(alert: AlertPayload, background_tasks: BackgroundTasks):
     result["timestamp"] = datetime.now(timezone.utc).isoformat()
     result["alert_id"] = alert.alert_id
 
-    if result["verdict"] in (Verdict.ESCALATE.value, Verdict.ENRICH.value):
+    if result.get("verdict") in ("ESCALATE", "ENRICH"):
         background_tasks.add_task(hive_client.create_case, alert.model_dump(), result)
 
+    validated = TriageResult.model_validate(result)
     logger.info(
         "Alert %s -> verdict=%s severity=%s (%sms)",
         alert.alert_id,
-        result["verdict"],
-        result["severity_normalized"],
+        validated.verdict,
+        validated.severity_normalized,
         elapsed_ms,
     )
-    return result
+    return validated
 
 
 @app.post("/playbook")
-async def generate_playbook(alert_type: str, context: Optional[str] = None):
+async def generate_playbook(alert_type: str, context: str | None = None):
     steps = await analyzer.generate_playbook(alert_type, context)
     return {"alert_type": alert_type, "steps": steps}
 
