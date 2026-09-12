@@ -1,6 +1,7 @@
 # 🧠 AI-Augmented SOC Lab
 
 [![CI](https://github.com/sandeepmothukuri/AI-Augmented-SOC-Lab/actions/workflows/ci.yml/badge.svg)](https://github.com/sandeepmothukuri/AI-Augmented-SOC-Lab/actions)
+[![Security](https://github.com/sandeepmothukuri/AI-Augmented-SOC-Lab/actions/workflows/security.yml/badge.svg)](https://github.com/sandeepmothukuri/AI-Augmented-SOC-Lab/actions/workflows/security.yml)
 [![MITRE ATT&CK](https://img.shields.io/badge/MITRE-ATT%26CK-red)](https://attack.mitre.org/)
 
 A practical Security Operations Center laboratory for building, testing, and documenting blue-team workflows across security telemetry, detection, enrichment, SOAR, case management, and **AI-assisted analyst workflows**.
@@ -24,6 +25,7 @@ It focuses on:
 - MITRE ATT&CK mapping
 - Local LLM-assisted analysis
 - Repeatable security test scenarios
+- Deterministic validation of AI output contracts
 
 The AI component is intentionally positioned as an **analyst-assistance capability**, while the separate `AI-SOC-Decision-Engine` project can serve as a dedicated AI decision/control-plane implementation.
 
@@ -122,12 +124,13 @@ AI Analysis
   └── Response Recommendation
   │
   ▼
-Analyst Validation
+Schema Validation
   │
-  ├── Close
-  ├── Investigate
-  ├── Enrich
-  └── Escalate
+  ├── Valid → Analyst Validation
+  └── Invalid → ENRICH / Manual Review
+                     │
+                     ▼
+              Analyst Decision
 ```
 
 ### AI use cases
@@ -141,7 +144,7 @@ Analyst Validation
 - Playbook assistance
 - Natural-language security queries
 
-AI output should always be validated against the underlying security evidence before consequential response actions are taken.
+The AI engine validates the model's triage contract before accepting a decision. Invalid model output fails closed to `ENRICH`, requiring manual review.
 
 ---
 
@@ -162,26 +165,26 @@ AI output should always be validated against the underlying security evidence be
 
 ## 🧪 Validation & Test Scenarios
 
-The repository includes scripts and workflow definitions for exercising SOC scenarios without requiring real-world malicious activity.
+The repository includes deterministic synthetic scenarios for controlled laboratory validation. Test inputs use documentation/test address space rather than real infrastructure indicators.
 
 ```bash
 # Pipeline health check
 ./scripts/test-pipeline.sh
 
-# Test a specific synthetic scenario
+# Test an individual synthetic scenario
 python3 scripts/send-test-alert.py ssh-bruteforce
 
-# Run the available scenario set
+# Exercise the available synthetic scenarios
 python3 scripts/send-test-alert.py all
 ```
 
-These tests are intended for controlled laboratory validation.
+Scenario definitions and evidence requirements are documented in [`docs/scenarios.md`](docs/scenarios.md).
 
 ---
 
 ## 📸 Visual Evidence
 
-The following **10 repository images** are displayed directly below. GitHub supports repository-relative image paths in Markdown, which keeps the README portable when the repository is cloned. citeturn0search0
+The repository includes **10 interface images** displayed directly below. They document the referenced platform interfaces; they are not presented as proof that every platform is continuously deployed or connected in every environment.
 
 ### 01 — Wazuh Security Operations Dashboard
 
@@ -223,8 +226,6 @@ The following **10 repository images** are displayed directly below. GitHub supp
 
 ![Ollama Open WebUI](docs/screenshots/ollama-openwebui.png)
 
-> **Evidence boundary:** these images document the interfaces represented in the project. They are not presented as proof that every platform is continuously deployed, externally reachable, or connected in every environment.
-
 ---
 
 ## 📁 Repository Structure
@@ -232,6 +233,7 @@ The following **10 repository images** are displayed directly below. GitHub supp
 ```text
 AI-Augmented-SOC-Lab/
 ├── .github/
+│   ├── dependabot.yml
 │   └── workflows/
 ├── ai-engine/
 │   ├── app.py
@@ -239,18 +241,16 @@ AI-Augmented-SOC-Lab/
 │   ├── thehive_client.py
 │   └── prompts/
 ├── docker/
-│   ├── docker-compose.wazuh.yml
-│   ├── docker-compose.thehive.yml
-│   ├── docker-compose.shuffle.yml
-│   ├── docker-compose.misp.yml
-│   └── docker-compose.ollama.yml
 ├── shuffle-workflows/
 ├── wazuh-config/
 ├── thehive-config/
 ├── scripts/
+├── tests/
 ├── docs/
 │   ├── ai-prompts.md
 │   ├── mitre-mapping.md
+│   ├── scenarios.md
+│   ├── runbooks/
 │   ├── setup-guide.md
 │   └── screenshots/
 ├── SECURITY.md
@@ -299,7 +299,7 @@ pip install -r requirements.txt
 python app.py
 ```
 
-For the detailed environment setup, endpoint onboarding, workflow configuration, and troubleshooting procedure, see [`docs/setup-guide.md`](docs/setup-guide.md).
+For detailed environment setup, endpoint onboarding, workflow configuration, and troubleshooting, see [`docs/setup-guide.md`](docs/setup-guide.md).
 
 ---
 
@@ -312,6 +312,7 @@ For the detailed environment setup, endpoint onboarding, workflow configuration,
 - Validate security conclusions against source evidence.
 - Use synthetic test data when demonstrating attack scenarios.
 - Keep production environments separate from this laboratory.
+- Review dependency and workflow changes through CI security checks.
 
 ---
 
@@ -322,16 +323,29 @@ For the detailed environment setup, endpoint onboarding, workflow configuration,
 | [`docs/setup-guide.md`](docs/setup-guide.md) | Installation and environment setup |
 | [`docs/ai-prompts.md`](docs/ai-prompts.md) | AI prompt and analysis guidance |
 | [`docs/mitre-mapping.md`](docs/mitre-mapping.md) | ATT&CK mapping |
+| [`docs/scenarios.md`](docs/scenarios.md) | Deterministic SOC validation scenarios |
+| [`docs/runbooks/incident-response.md`](docs/runbooks/incident-response.md) | Analyst investigation and response procedure |
 | [`SECURITY.md`](SECURITY.md) | Security reporting and project security guidance |
 | [`CONTRIBUTING.md`](CONTRIBUTING.md) | Contribution guidance |
 
 ---
 
-## 🧪 CI Validation
+## 🧪 CI & Security Validation
 
-The repository includes GitHub Actions validation for Python formatting/linting, Docker Compose configuration, JSON configuration files, and Wazuh XML rules. fileciteturn105file0
+GitHub Actions validates:
 
-This provides a baseline check that configuration and source artifacts remain structurally valid as the project evolves.
+- Python formatting with Black
+- Import ordering with isort
+- Python linting with flake8
+- Deterministic unit/contract tests with pytest
+- Docker Compose configuration
+- JSON configuration files
+- Wazuh XML rules
+- CodeQL analysis for Python and GitHub Actions
+- Pull-request dependency review
+- GitHub Actions workflow security with zizmor
+
+Dependabot is configured for Python and GitHub Actions updates.
 
 ---
 
@@ -373,7 +387,7 @@ This provides a baseline check that configuration and source artifacts remain st
 
 > **Build it. Test it. Measure it. Document it. Improve it.**
 
-This laboratory is intended to demonstrate practical security engineering: connecting telemetry to detections, detections to investigations, investigations to response, and lessons learned back into detection improvement.
+This laboratory demonstrates practical security engineering: connecting telemetry to detections, detections to investigations, investigations to response, and lessons learned back into detection improvement.
 
 ---
 
