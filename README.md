@@ -1,180 +1,297 @@
 # 🧠 AI-Augmented SOC Lab
 
-[![CI](https://github.com/sandeepmothukuri/AI-Augmented-SOC-Lab/actions/workflows/ci.yml/badge.svg)](https://github.com/sandeepmothukuri/AI-Augmented-SOC-Lab/actions) [![Website](https://img.shields.io/badge/Website-cybertechnology.in-blue)](https://cybertechnology.in) [![MITRE ATT&CK](https://img.shields.io/badge/MITRE-ATT%26CK-red)](https://attack.mitre.org/)
+[![CI](https://github.com/sandeepmothukuri/AI-Augmented-SOC-Lab/actions/workflows/ci.yml/badge.svg)](https://github.com/sandeepmothukuri/AI-Augmented-SOC-Lab/actions)
+[![MITRE ATT&CK](https://img.shields.io/badge/MITRE-ATT%26CK-red)](https://attack.mitre.org/)
 
-A full open-source Security Operations Center (SOC) lab enhanced with a local AI decision-support layer. Built for learning, research, and practical blue-team skill development.
+A practical Security Operations Center laboratory for building, testing, and documenting blue-team workflows across security telemetry, detection, enrichment, SOAR, case management, and **AI-assisted analyst workflows**.
+
+> **AI augments the analyst; it does not replace analyst judgment.**
 
 ---
 
-## 📐 Architecture
+## 🎯 Project Focus
 
+This repository is the **SOC operations and laboratory layer** of the project portfolio.
+
+It focuses on:
+
+- Security telemetry and alert generation
+- SIEM / endpoint security workflows
+- Detection and triage
+- Threat-intelligence enrichment
+- SOAR orchestration
+- Incident case management
+- MITRE ATT&CK mapping
+- Local LLM-assisted analysis
+- Repeatable security test scenarios
+
+The AI component is intentionally positioned as an **analyst-assistance capability**, while the separate `AI-SOC-Decision-Engine` project can serve as a dedicated AI decision/control-plane implementation.
+
+---
+
+## 📐 SOC Architecture
+
+```text
+ Security Telemetry
+        │
+        ├── Endpoint / Host Events
+        ├── Security Logs
+        └── Network Telemetry
+                │
+                ▼
+        ┌───────────────┐
+        │     Wazuh     │
+        │ SIEM / EDR    │
+        └───────┬───────┘
+                │
+                ▼
+        Detection / Alert
+                │
+                ▼
+        ┌───────────────┐
+        │    Shuffle    │
+        │     SOAR      │
+        └───────┬───────┘
+                │
+        ┌───────┼────────┐
+        ▼       ▼        ▼
+      MISP   Cortex   AI Engine
+       CTI   Analysis  Local LLM
+        │       │        │
+        └───────┼────────┘
+                ▼
+        Enriched Alert Context
+                │
+                ▼
+        ┌───────────────┐
+        │    TheHive    │
+        │ Case Mgmt     │
+        └───────┬───────┘
+                │
+                ▼
+        SOC Analyst Review
+                │
+                ▼
+        Investigation / IR
 ```
-Logs / Events
-(Wazuh, Suricata, Zeek)
-        ↓
-   SIEM (Elastic via Wazuh)
-        ↓
-    Alert Trigger
-        ↓
-     Shuffle (SOAR)
-        ↓
-   Enrichment Phase
-   ├─ MISP (threat intel)
-   ├─ Cortex analyzers
-   └─ External APIs
-        ↓
-   AI Engine (Ollama + LangChain)
-        ↓
-   Output:
-   - Alert summary
-   - Severity classification
-   - MITRE ATT&CK mapping
-   - Response recommendation
-        ↓
-   TheHive Case Creation
-        ↓
-   Analyst Decision / Automated Response
+
+### Operational lifecycle
+
+```text
+Detect → Validate → Enrich → Triage → Investigate → Scope → Respond → Document → Improve
 ```
 
 ---
 
-## 🛠️ Stack
+## 🧩 Technology Stack
 
-| Component | Role |
-|-----------|------|
-| **Wazuh** | SIEM + EDR + Log aggregation |
-| **Suricata** | Network IDS/IPS |
-| **Zeek** | Network traffic analysis |
-| **TheHive** | Case management |
-| **Cortex** | Alert enrichment / analyzers |
-| **Shuffle** | SOAR / workflow automation |
-| **MISP** | Threat intelligence platform |
-| **Ollama** | Local LLM inference (privacy-safe) |
-| **LangChain** | AI pipeline orchestration |
+| Component | Function | Repository Role |
+|---|---|---|
+| **Wazuh** | SIEM / endpoint security | Telemetry and detection |
+| **Suricata** | Network IDS/IPS | Network detection capability |
+| **Zeek** | Network monitoring | Network visibility capability |
+| **Shuffle** | SOAR | Workflow orchestration |
+| **MISP** | Threat intelligence | IOC / CTI enrichment |
+| **Cortex** | Observable analysis | Enrichment capability |
+| **TheHive** | Case management | Investigation tracking |
+| **Ollama** | Local LLM inference | Private AI assistance |
+| **LangChain** | AI orchestration | AI analysis pipeline |
+| **FastAPI** | API framework | AI engine interface |
+
+> Components are documented according to their intended laboratory role. Deployment status can vary by environment; screenshots are evidence of the referenced interfaces, not a claim of continuous production availability.
 
 ---
 
-## 📸 Screenshots
+## 🤖 AI-Assisted SOC Workflow
 
-### Wazuh SIEM — Security Operations Dashboard
-> Central hub for all security events, agent status, and compliance across your environment.
+The AI layer supports analysts with structured analysis rather than acting as an autonomous authority.
+
+```text
+Alert
+  │
+  ▼
+Context Normalization
+  │
+  ▼
+AI Analysis
+  ├── Alert Summary
+  ├── Severity Assessment
+  ├── Confidence
+  ├── MITRE ATT&CK Context
+  ├── Investigation Guidance
+  └── Response Recommendation
+  │
+  ▼
+Analyst Validation
+  │
+  ├── Close
+  ├── Investigate
+  ├── Enrich
+  └── Escalate
+```
+
+### AI use cases
+
+- Alert summarization
+- Analyst-assisted triage
+- Severity assessment
+- MITRE ATT&CK mapping
+- Investigation guidance
+- Response recommendations
+- Playbook assistance
+- Natural-language security queries
+
+AI output should always be validated against the underlying security evidence before consequential response actions are taken.
+
+---
+
+## 📊 Detection & Investigation Model
+
+| Stage | Objective |
+|---|---|
+| **Detect** | Identify suspicious or anomalous activity |
+| **Validate** | Determine whether the alert represents meaningful activity |
+| **Enrich** | Add IOC, threat-intelligence, and observable context |
+| **Triage** | Establish priority, severity, and next actions |
+| **Investigate** | Analyze evidence and determine scope |
+| **Respond** | Execute appropriate containment or remediation |
+| **Document** | Preserve investigation context and outcome |
+| **Improve** | Feed lessons learned back into detection engineering |
+
+---
+
+## 🧪 Validation & Test Scenarios
+
+The repository includes scripts and workflow definitions for exercising SOC scenarios without requiring real-world malicious activity.
+
+```bash
+# Pipeline health check
+./scripts/test-pipeline.sh
+
+# Test a specific synthetic scenario
+python3 scripts/send-test-alert.py ssh-bruteforce
+
+# Run the available scenario set
+python3 scripts/send-test-alert.py all
+```
+
+These tests are intended for controlled laboratory validation.
+
+---
+
+## 📸 Visual Evidence
+
+The following **10 repository images** are displayed directly below. GitHub supports repository-relative image paths in Markdown, which keeps the README portable when the repository is cloned. citeturn0search0
+
+### 01 — Wazuh Security Operations Dashboard
 
 ![Wazuh Security Operations Dashboard](docs/screenshots/wazuh-dashboard.png)
 
----
-
-### Wazuh — Endpoint Security View
-> Per-agent telemetry including vulnerability detection, FIM, and active threats.
+### 02 — Wazuh Endpoint Security
 
 ![Wazuh Endpoint Security](docs/screenshots/wazuh-endpoint-security.png)
 
----
-
-### Wazuh — Threat Intelligence Panel
-> Correlates alerts against known threat intel feeds and MITRE ATT&CK techniques.
+### 03 — Wazuh Threat Intelligence
 
 ![Wazuh Threat Intelligence](docs/screenshots/wazuh-threat-intel.png)
 
----
-
-### TheHive — Enriched Case Management
-> Each AI-triaged alert auto-creates a structured case with playbook tasks and IOCs.
+### 04 — TheHive Case Management
 
 ![TheHive Case Management](docs/screenshots/thehive-case-management.png)
 
----
-
-### TheHive — Centralized Alert Management
-> All incoming alerts from Wazuh/Suricata are queued, prioritized, and assigned here.
+### 05 — TheHive Alert Management
 
 ![TheHive Alert Management](docs/screenshots/thehive-alert-management.png)
 
----
+### 06 — TheHive + Cortex Analysis
 
-### TheHive + Cortex — Automated Analysis & Response
-> Cortex analyzers enrich alerts with VirusTotal, AbuseIPDB, and passive DNS lookups.
+![TheHive Cortex Analysis](docs/screenshots/thehive-cortex-response.png)
 
-![TheHive Cortex Response](docs/screenshots/thehive-cortex-response.png)
-
----
-
-### Shuffle SOAR — Workflow Automation
-> Drag-and-drop workflow connects Wazuh webhooks → MISP enrichment → AI Engine → TheHive case creation.
+### 07 — Shuffle SOAR Workflow
 
 ![Shuffle SOAR Workflow](docs/screenshots/shuffle-workflow.png)
 
----
+### 08 — MISP Threat Intelligence Dashboard
 
-### MISP — Live Threat Intelligence Dashboard
-> Real-time IOC feeds, event correlations, and threat actor tracking from the community.
+![MISP Threat Intelligence Dashboard](docs/screenshots/misp-dashboard.png)
 
-![MISP Live Dashboard](docs/screenshots/misp-dashboard.png)
-
----
-
-### MISP — Trending Threat Indicators
-> Tracks rising IOCs, malware families, and attack patterns across sharing communities.
+### 09 — MISP Trending Indicators
 
 ![MISP Trending Indicators](docs/screenshots/misp-trendings.png)
 
----
-
-### Ollama — Local LLM Interface (Open WebUI)
-> Privacy-safe local AI model running LLaMA 3 / Mistral — no data leaves your network.
+### 10 — Ollama / Open WebUI
 
 ![Ollama Open WebUI](docs/screenshots/ollama-openwebui.png)
 
+> **Evidence boundary:** these images document the interfaces represented in the project. They are not presented as proof that every platform is continuously deployed, externally reachable, or connected in every environment.
+
 ---
 
-## ⚙️ AI Use Cases
+## 📁 Repository Structure
 
-### 1. Alert Summarization
-Converts raw log data into structured, analyst-readable summaries with MITRE ATT&CK mapping.
-
-### 2. False Positive Reduction
-AI filters known scanners, internal vulnerability scans, and maintenance window traffic.
-
-### 3. Automated Triage (L1 Replacement Layer)
-AI classifies alerts as: `CLOSE` / `ESCALATE` / `ENRICH` — with confidence score.
-
-### 4. Playbook Generation
-Given an alert type, AI generates a step-by-step incident response workflow.
-
-### 5. Natural Language SIEM Queries
-Ask questions in plain English and get Elasticsearch DSL queries back.
+```text
+AI-Augmented-SOC-Lab/
+├── .github/
+│   └── workflows/
+├── ai-engine/
+│   ├── app.py
+│   ├── analyzer.py
+│   ├── thehive_client.py
+│   └── prompts/
+├── docker/
+│   ├── docker-compose.wazuh.yml
+│   ├── docker-compose.thehive.yml
+│   ├── docker-compose.shuffle.yml
+│   ├── docker-compose.misp.yml
+│   └── docker-compose.ollama.yml
+├── shuffle-workflows/
+├── wazuh-config/
+├── thehive-config/
+├── scripts/
+├── docs/
+│   ├── ai-prompts.md
+│   ├── mitre-mapping.md
+│   ├── setup-guide.md
+│   └── screenshots/
+├── SECURITY.md
+├── CONTRIBUTING.md
+└── README.md
+```
 
 ---
 
 ## 🚀 Quick Start
 
-### Prerequisites
+### Requirements
 
+- Linux or WSL2
 - Docker + Docker Compose
-- 16 GB RAM minimum (32 GB recommended)
-- 100 GB disk space
-- Linux (Ubuntu 22.04 recommended) or WSL2
+- Python 3.11 recommended
+- 16 GB RAM minimum
+- 32 GB RAM recommended for a broader stack
+- 100 GB+ available storage
 
-### 1. Clone the repo
+### Clone
 
 ```bash
 git clone https://github.com/sandeepmothukuri/AI-Augmented-SOC-Lab.git
 cd AI-Augmented-SOC-Lab
 ```
 
-### 2. Deploy the core stack
+### Deploy
 
 ```bash
-chmod +x scripts/deploy.sh
+chmod +x scripts/*.sh
 ./scripts/deploy.sh
 ```
 
-### 3. Pull the AI model
+### Configure local AI
 
 ```bash
 ./scripts/setup-ollama.sh
 ```
 
-### 4. Start the AI engine
+### Run the AI engine locally
 
 ```bash
 cd ai-engine
@@ -182,113 +299,98 @@ pip install -r requirements.txt
 python app.py
 ```
 
-### 5. Import Shuffle workflows
-
-Import the JSON files from `shuffle-workflows/` into your Shuffle instance.
+For the detailed environment setup, endpoint onboarding, workflow configuration, and troubleshooting procedure, see [`docs/setup-guide.md`](docs/setup-guide.md).
 
 ---
 
-## 📁 Project Structure
+## 🔐 Security Principles
 
-```text
-AI-Augmented-SOC-Lab/
-├── docker/
-├── ai-engine/
-├── shuffle-workflows/
-├── wazuh-config/
-├── thehive-config/
-├── scripts/
-└── docs/
-```
+- Keep credentials and API keys outside committed source files.
+- Do not commit production telemetry or customer data.
+- Prefer local AI inference for sensitive laboratory data.
+- Treat AI output as advisory.
+- Validate security conclusions against source evidence.
+- Use synthetic test data when demonstrating attack scenarios.
+- Keep production environments separate from this laboratory.
 
 ---
 
-## 🔐 Security Considerations
+## 🧭 Documentation
 
-- All LLM inference runs locally via Ollama.
-- AI output is advisory only — analysts retain final decision authority.
-- Every AI decision is logged with timestamp and confidence information.
-- Avoid sending raw logs to cloud-based LLMs.
-
----
-
-## 📊 Day-by-Day Build Plan
-
-| Day | Task |
-|-----|------|
-| 1-2 | Deploy Wazuh + connect endpoints |
-| 3 | Deploy TheHive + Cortex |
-| 4 | Deploy Shuffle + configure webhooks |
-| 5 | Install Ollama + pull LLaMA 3 |
-| 6-7 | Connect pipeline: Shuffle → AI Engine → TheHive |
+| Document | Purpose |
+|---|---|
+| [`docs/setup-guide.md`](docs/setup-guide.md) | Installation and environment setup |
+| [`docs/ai-prompts.md`](docs/ai-prompts.md) | AI prompt and analysis guidance |
+| [`docs/mitre-mapping.md`](docs/mitre-mapping.md) | ATT&CK mapping |
+| [`SECURITY.md`](SECURITY.md) | Security reporting and project security guidance |
+| [`CONTRIBUTING.md`](CONTRIBUTING.md) | Contribution guidance |
 
 ---
 
-## 🤖 Supported AI Models (via Ollama)
+## 🧪 CI Validation
 
-| Model | Size | Best For |
-|-------|------|----------|
-| `llama3` | 8B | General triage, balanced |
-| `mistral` | 7B | Fast triage, low RAM |
-| `phi3` | 3.8B | Minimal resources |
-| `llama3:70b` | 70B | High-accuracy analysis |
+The repository includes GitHub Actions validation for Python formatting/linting, Docker Compose configuration, JSON configuration files, and Wazuh XML rules. fileciteturn105file0
+
+This provides a baseline check that configuration and source artifacts remain structurally valid as the project evolves.
+
+---
+
+## 🗺️ Project Roadmap
+
+### Detection Engineering
+
+- Expand behavioral detections
+- Increase MITRE ATT&CK coverage
+- Add controlled validation scenarios
+- Improve detection-to-investigation documentation
+
+### SOC Automation
+
+- Expand Shuffle workflows
+- Improve enrichment paths
+- Add robust failure handling
+- Improve analyst approval points
+
+### AI Assistance
+
+- Structured model-output validation
+- Evidence-aware prompts
+- Confidence calibration
+- Prompt-security controls
+- Model evaluation datasets
+- Analyst feedback loops
+
+### Observability
+
+- Pipeline health visibility
+- Workflow execution evidence
+- AI analysis metrics
+- Detection validation results
+
+---
+
+## 🔬 Engineering Philosophy
+
+> **Build it. Test it. Measure it. Document it. Improve it.**
+
+This laboratory is intended to demonstrate practical security engineering: connecting telemetry to detections, detections to investigations, investigations to response, and lessons learned back into detection improvement.
 
 ---
 
 ## 📜 License
 
-MIT — free to use, modify, and share.
+MIT License.
 
 ---
 
-## 🤝 Contributing
+## 👤 Author
 
-Pull requests welcome. See [docs/setup-guide.md](docs/setup-guide.md) to get started.
-
----
-
-# 👤 Author
-
-## Sandeep Mothukuri
+### Sandeep Mothukuri
 
 **Senior SOC Analyst (L3) · Detection Engineering · Threat Hunting · Incident Response · Security Engineering**
 
-Focus areas:
-
-- Security Operations
-- Detection Engineering
-- Threat Hunting
-- Incident Response
-- SIEM / XDR
-- SOAR
-- DFIR
-- MITRE ATT&CK
-- Security Automation
-- AI-Augmented SOC Operations
-
-This repository is maintained as a practical security engineering environment for designing, testing and validating modern SOC capabilities.
-
-- GitHub: [@sandeepmothukuri](https://github.com/sandeepmothukuri)
-- Website: [cybertechnology.in](https://cybertechnology.in)
-- LinkedIn: [linkedin.com/in/sandeepmothukuri](https://www.linkedin.com/in/sandeepmothukuri)
-- Email: [sandeep.mothukuris@gmail.com](mailto:sandeep.mothukuris@gmail.com)
+Focus areas include Security Operations, Detection Engineering, Threat Hunting, Incident Response, SIEM/XDR, SOAR, DFIR, MITRE ATT&CK, Security Automation, and AI-Augmented SOC Operations.
 
 ---
 
-# 🗂️ All Repositories
-
-| Repository | Description |
-|---|---|
-| [AI-Augmented-SOC-Lab](https://github.com/sandeepmothukuri/AI-Augmented-SOC-Lab) | AI-augmented SOC with Wazuh + TheHive + Ollama (LLaMA3) for automated triage |
-| [Enterprise-Detection-Engineering-SOC-Lab](https://github.com/sandeepmothukuri/Enterprise-Detection-Engineering-SOC-Lab) | 12-tool SOC lab with OpenSearch, Suricata, Zeek, MISP, Caldera, Velociraptor |
-| [Autonomous-SOC-Lab](https://github.com/sandeepmothukuri/Autonomous-SOC-Lab) | Autonomous SOC with AI-driven detection and self-healing playbooks |
-| [soc-threat-hunting-lab](https://github.com/sandeepmothukuri/soc-threat-hunting-lab) | Threat detection lab — Zeek, RITA, Arkime, Velociraptor, OSQuery, MISP |
-| [soc-lab-free](https://github.com/sandeepmothukuri/soc-lab-free) | Free SOC lab — OpenVAS, Wazuh, pfSense, Proxmox Mail, Lynis |
-| [SOC-Detection-and-Threat-Hunting-Lab](https://github.com/sandeepmothukuri/SOC-Detection-and-Threat-Hunting-Lab) | SOC analyst home lab — Wazuh, Sysmon, MITRE ATT&CK mapping and incident response |
-| [cyberblue](https://github.com/sandeepmothukuri/cyberblue) | Containerised blue-team platform — SIEM, DFIR, CTI, SOAR, Network Analysis |
-| [PromptSentinel](https://github.com/sandeepmothukuri/PromptSentinel) | Enterprise-grade prompt injection detection and AI firewall for LLM applications |
-| [PromptShield](https://github.com/sandeepmothukuri/PromptShield) | AI Security + SOC Detection Engineering Lab with prompt-security telemetry, detections and response |
-| [sentinel-detection-engine](https://github.com/sandeepmothukuri/sentinel-detection-engine) | Detection-as-code for Microsoft Sentinel and Defender XDR with KQL, SOAR and ATT&CK coverage |
-
----
-⭐ **Star this repo if it helped you — it helps other SOC analysts find it!**
+⭐ If this laboratory is useful for your SOC engineering or blue-team research, consider starring the repository.
