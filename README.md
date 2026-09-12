@@ -190,51 +190,25 @@ Import the JSON files from `shuffle-workflows/` into your Shuffle instance.
 
 ## 📁 Project Structure
 
-```
+```text
 AI-Augmented-SOC-Lab/
-├── docker/                    # Docker Compose configs per service
-│   ├── docker-compose.wazuh.yml
-│   ├── docker-compose.thehive.yml
-│   ├── docker-compose.shuffle.yml
-│   ├── docker-compose.misp.yml
-│   └── docker-compose.ollama.yml
-├── ai-engine/                 # Python AI pipeline
-│   ├── app.py                 # FastAPI server
-│   ├── analyzer.py            # Core alert analysis logic
-│   ├── prompts/               # LLM prompt templates
-│   │   ├── triage.txt
-│   │   ├── summary.txt
-│   │   └── playbook.txt
-│   └── requirements.txt
-├── shuffle-workflows/         # SOAR automation workflows
-│   ├── ssh-bruteforce.json
-│   ├── malware-detection.json
-│   └── data-exfiltration.json
-├── wazuh-config/              # Custom Wazuh rules and decoders
-│   ├── custom-rules.xml
-│   └── ossec.conf
-├── thehive-config/            # TheHive case templates
-│   └── case-templates.json
-├── scripts/                   # Deployment and utility scripts
-│   ├── deploy.sh
-│   ├── setup-ollama.sh
-│   ├── test-pipeline.sh
-│   └── send-test-alert.py
-└── docs/                      # Extended documentation
-    ├── setup-guide.md
-    ├── ai-prompts.md
-    ├── mitre-mapping.md
-    └── screenshots/           # All UI screenshots
+├── docker/
+├── ai-engine/
+├── shuffle-workflows/
+├── wazuh-config/
+├── thehive-config/
+├── scripts/
+└── docs/
 ```
 
 ---
 
 ## 🔐 Security Considerations
 
-- All LLM inference runs **locally via Ollama** — no data leaves your network
-- AI output is **advisory only** — analysts retain final decision authority
-- Every AI decision is **logged with timestamp, confidence score, and reasoning**
-- Avoid sending raw logs to cloud-based LLMs
+- All LLM inference runs locally via Ollama.
+- AI output is advisory only — analysts retain final decision authority.
+- Every AI decision is logged with timestamp and confidence information.
+- Avoid sending raw logs to cloud-based LLMs.
 
 ---
 
@@ -273,17 +247,35 @@ Pull requests welcome. See [docs/setup-guide.md](docs/setup-guide.md) to get sta
 
 ---
 
-## 👤 Author
+# 👤 Author
 
-**Sandeep Mothukuri**
+## Sandeep Mothukuri
+
+**Senior SOC Analyst (L3) · Detection Engineering · Threat Hunting · Incident Response · Security Engineering**
+
+Focus areas:
+
+- Security Operations
+- Detection Engineering
+- Threat Hunting
+- Incident Response
+- SIEM / XDR
+- SOAR
+- DFIR
+- MITRE ATT&CK
+- Security Automation
+- AI-Augmented SOC Operations
+
+This repository is maintained as a practical security engineering environment for designing, testing and validating modern SOC capabilities.
+
 - GitHub: [@sandeepmothukuri](https://github.com/sandeepmothukuri)
 - Website: [cybertechnology.in](https://cybertechnology.in)
 - LinkedIn: [linkedin.com/in/sandeepmothukuri](https://www.linkedin.com/in/sandeepmothukuri)
-- Email: sandeep.mothukuris@gmail.com
+- Email: [sandeep.mothukuris@gmail.com](mailto:sandeep.mothukuris@gmail.com)
 
 ---
 
-## 🗂️ All Repositories
+# 🗂️ All Repositories
 
 | Repository | Description |
 |---|---|
@@ -292,10 +284,12 @@ Pull requests welcome. See [docs/setup-guide.md](docs/setup-guide.md) to get sta
 | [Autonomous-SOC-Lab](https://github.com/sandeepmothukuri/Autonomous-SOC-Lab) | Autonomous SOC with AI-driven detection and self-healing playbooks |
 | [soc-threat-hunting-lab](https://github.com/sandeepmothukuri/soc-threat-hunting-lab) | Threat detection lab — Zeek, RITA, Arkime, Velociraptor, OSQuery, MISP |
 | [soc-lab-free](https://github.com/sandeepmothukuri/soc-lab-free) | Free SOC lab — OpenVAS, Wazuh, pfSense, Proxmox Mail, Lynis |
-| [SOC-Detection-and-Threat-Hunting-Lab](https://github.com/sandeepmothukuri/SOC-Detection-and-Threat-Hunting-Lab) | SOC analyst home lab — Wazuh SIEM, Sysmon, MITRE ATT&CK mapping |
-| [cyberblue](https://github.com/sandeepmothukuri/cyberblue) | Containerised blue team platform — SIEM, DFIR, CTI, SOAR, Network Analysis |
-
+| [SOC-Detection-and-Threat-Hunting-Lab](https://github.com/sandeepmothukuri/SOC-Detection-and-Threat-Hunting-Lab) | SOC analyst home lab — Wazuh, Sysmon, MITRE ATT&CK mapping and incident response |
+| [cyberblue](https://github.com/sandeepmothukuri/cyberblue) | Containerised blue-team platform — SIEM, DFIR, CTI, SOAR, Network Analysis |
+| [PromptSentinel](https://github.com/sandeepmothukuri/PromptSentinel) | Enterprise-grade prompt injection detection and AI firewall for LLM applications |
+| [PromptShield](https://github.com/sandeepmothukuri/PromptShield) | AI Security + SOC Detection Engineering Lab with prompt-security telemetry, detections and response |
+| [sentinel-detection-engine](https://github.com/sandeepmothukuri/sentinel-detection-engine) | Detection-as-code for Microsoft Sentinel and Defender XDR with KQL, SOAR and ATT&CK coverage |
+| [awesome-lists](https://github.com/sandeepmothukuri/awesome-lists) | SOC/DFIR detection lists, threat-hunting references and security research resources |
 
 ---
 ⭐ **Star this repo if it helped you — it helps other SOC analysts find it!**
-
