@@ -18,6 +18,7 @@ It focuses on:
 
 - Security telemetry and alert generation
 - SIEM / endpoint security workflows
+- Network IDS/IPS and network monitoring
 - Detection and triage
 - Threat-intelligence enrichment
 - SOAR orchestration
@@ -33,48 +34,133 @@ The AI component is intentionally positioned as an **analyst-assistance capabili
 
 ## 📐 SOC Architecture
 
+The architecture separates **telemetry collection, network detection, SIEM correlation, enrichment, AI-assisted triage, orchestration, and analyst case management**. Each platform has a defined SOC responsibility rather than being presented as an undifferentiated tool stack.
+
 ```text
- Security Telemetry
-        │
-        ├── Endpoint / Host Events
-        ├── Security Logs
-        └── Network Telemetry
-                │
-                ▼
-        ┌───────────────┐
-        │     Wazuh     │
-        │ SIEM / EDR    │
-        └───────┬───────┘
-                │
-                ▼
-        Detection / Alert
-                │
-                ▼
-        ┌───────────────┐
-        │    Shuffle    │
-        │     SOAR      │
-        └───────┬───────┘
-                │
-        ┌───────┼────────┐
-        ▼       ▼        ▼
-      MISP   Cortex   AI Engine
-       CTI   Analysis  Local LLM
-        │       │        │
-        └───────┼────────┘
-                ▼
-        Enriched Alert Context
-                │
-                ▼
-        ┌───────────────┐
-        │    TheHive    │
-        │ Case Mgmt     │
-        └───────┬───────┘
-                │
-                ▼
-        SOC Analyst Review
-                │
-                ▼
-        Investigation / IR
+┌───────────────────────────────────────────────────────────────────────────────┐
+│                         SECURITY TELEMETRY LAYER                              │
+├───────────────────────────────┬───────────────────────────┬───────────────────┤
+│ Wazuh Agents / Endpoints      │ Suricata                  │ Zeek              │
+│ Host logs, FIM, vuln, EDR     │ Network IDS / IPS         │ Network metadata  │
+│ process & authentication      │ EVE JSON alerts           │ DNS / TLS / Conn  │
+└───────────────┬───────────────┴───────────────┬───────────┴─────────┬─────────┘
+                │                               │                     │
+                │ endpoint/security events      │ network alerts      │ network telemetry
+                └───────────────────────────────┼─────────────────────┘
+                                                ▼
+┌───────────────────────────────────────────────────────────────────────────────┐
+│                         DETECTION / SIEM LAYER                                │
+│                                   WAZUH                                       │
+│             SIEM + endpoint security + correlation + alerting                │
+└──────────────────────────────────────┬────────────────────────────────────────┘
+                                       │
+                                       ▼
+                              ┌──────────────────┐
+                              │ Security Alert   │
+                              │ Detection Event  │
+                              └────────┬─────────┘
+                                       │
+                                       ▼
+┌───────────────────────────────────────────────────────────────────────────────┐
+│                    AUTOMATION / ENRICHMENT LAYER                               │
+├───────────────────────┬──────────────────────┬────────────────────────────────┤
+│ Shuffle               │ MISP                 │ Cortex                         │
+│ SOAR orchestration    │ IOC / CTI enrichment │ Observable analysis            │
+│ routing / actions     │ intelligence context │ analyzer responses             │
+└───────────┬───────────┴───────────┬──────────┴──────────────┬─────────────────┘
+            │                       │                         │
+            │ workflow context      │ IOC context             │ observable results
+            └───────────────────────┼─────────────────────────┘
+                                    ▼
+┌───────────────────────────────────────────────────────────────────────────────┐
+│                         AI ASSISTANCE LAYER                                    │
+├──────────────────────────────────────┬────────────────────────────────────────┤
+│ FastAPI                              │ LangChain                              │
+│ AI engine interface                  │ AI orchestration / analysis pipeline   │
+│ /analyze /playbook /query            │ prompts, context and model workflow    │
+├──────────────────────────────────────┴────────────────────────────────────────┤
+│ Ollama — local LLM inference / private AI assistance                          │
+│ Structured triage → severity → ATT&CK context → guidance → recommendation    │
+└──────────────────────────────────────┬────────────────────────────────────────┘
+                                       │
+                                       ▼
+                              ┌──────────────────┐
+                              │ Validated AI     │
+                              │ Triage Context   │
+                              └────────┬─────────┘
+                                       │
+                                       ▼
+┌───────────────────────────────────────────────────────────────────────────────┐
+│                         CASE / RESPONSE LAYER                                  │
+├──────────────────────────────────────┬────────────────────────────────────────┤
+│ TheHive                              │ Shuffle                                │
+│ Case management / investigation      │ Response orchestration / actions       │
+│ observables / evidence / tracking   │ notifications / integrations            │
+└──────────────────────────┬───────────┴────────────────────────────────────────┘
+                           │
+                           ▼
+                  ┌───────────────────────┐
+                  │ SOC Analyst           │
+                  │ Review & Investigation│
+                  └───────────┬───────────┘
+                              │
+                              ▼
+              Containment → Eradication → Recovery
+                              │
+                              ▼
+                   Lessons Learned / Detection
+                         Engineering Feedback
+```
+
+### Component responsibilities
+
+| Component | Function | Repository Role |
+|---|---|---|
+| **Wazuh** | SIEM / endpoint security | Telemetry and detection |
+| **Suricata** | Network IDS/IPS | Network detection capability |
+| **Zeek** | Network monitoring | Network visibility capability |
+| **Shuffle** | SOAR | Workflow orchestration |
+| **MISP** | Threat intelligence | IOC / CTI enrichment |
+| **Cortex** | Observable analysis | Enrichment capability |
+| **TheHive** | Case management | Investigation tracking |
+| **Ollama** | Local LLM inference | Private AI assistance |
+| **LangChain** | AI orchestration | AI analysis pipeline |
+| **FastAPI** | API framework | AI engine interface |
+
+### Data flow
+
+```text
+Endpoint / Host
+      │
+      └──────────────► Wazuh ───────────────┐
+                                             │
+Network Traffic                              ▼
+      │                              Detection / Alert
+      ├──► Suricata ────────────────────────┤
+      │                                     │
+      └──► Zeek ────────────────────────────┘
+                                             │
+                                             ▼
+                                          Shuffle
+                                             │
+                       ┌─────────────────────┼──────────────────────┐
+                       ▼                     ▼                      ▼
+                     MISP                  Cortex              AI Engine
+                  IOC / CTI             Observable             FastAPI
+                   context              analysis            LangChain +
+                                                               Ollama
+                       └─────────────────────┼──────────────────────┘
+                                             ▼
+                                     Enriched AI Context
+                                             │
+                                             ▼
+                                          TheHive
+                                             │
+                                             ▼
+                                      SOC Investigation
+                                             │
+                                             ▼
+                                      Response / Closure
 ```
 
 ### Operational lifecycle
@@ -115,7 +201,13 @@ Alert
 Context Normalization
   │
   ▼
-AI Analysis
+FastAPI AI Engine
+  │
+  ▼
+LangChain Orchestration
+  │
+  ▼
+Ollama Local LLM
   ├── Alert Summary
   ├── Severity Assessment
   ├── Confidence
