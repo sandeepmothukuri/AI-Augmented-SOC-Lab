@@ -1,12 +1,15 @@
+import sys
+from pathlib import Path
+
 import pytest
 
-from ai_engine.analyzer import AlertAnalyzer
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "ai-engine"))
+from analyzer import AlertAnalyzer  # noqa: E402
 
 
 @pytest.fixture
 def analyzer():
-    instance = AlertAnalyzer.__new__(AlertAnalyzer)
-    return instance
+    return AlertAnalyzer.__new__(AlertAnalyzer)
 
 
 def test_valid_triage_json_is_normalized(analyzer):
