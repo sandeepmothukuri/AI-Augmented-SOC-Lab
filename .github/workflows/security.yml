@@ -15,25 +15,25 @@ permissions:
 
 jobs:
   codeql:
-    name: CodeQL
+    name: CodeQL (${{ matrix.language }})
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [python, actions]
     steps:
       - uses: actions/checkout@v6
 
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v3
         with:
-          languages: python, actions
+          languages: ${{ matrix.language }}
           queries: security-extended
 
       - name: Analyze
         uses: github/codeql-action/analyze@v3
         with:
-          category: /language:${{matrix.language}}
-        strategy:
-          fail-fast: false
-          matrix:
-            language: [python, actions]
+          category: /language:${{ matrix.language }}
 
   dependency-review:
     name: Dependency Review
