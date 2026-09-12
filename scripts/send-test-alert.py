@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """Send deterministic synthetic alerts to the local AI SOC engine."""
 
-import json
 import sys
 from datetime import datetime, timezone
 
