@@ -1,0 +1,364 @@
+version: '3.8'
+
+# AI-Augmented SOC Lab - Unified Master Docker Compose
+# Deploys Wazuh SIEM, TheHive 5, Cortex, Shuffle SOAR, MISP, Ollama, and AI SOC Engine.
+
+services:
+  # ============================================================================
+  # TIER 1: SIEM & ENDPOINT TELEMETRY (WAZUH)
+  # ============================================================================
+  wazuh-manager:
+    image: wazuh/wazuh-manager:4.7.3
+    hostname: wazuh-manager
+    container_name: wazuh-manager
+    restart: always
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    ports:
+      - "${WAZUH_AGENT_PORT:-1514}:1514"
+      - "${WAZUH_REG_PORT:-1515}:1515"
+      - "${WAZUH_SYSLOG_PORT:-514}:514/udp"
+      - "${WAZUH_API_PORT:-55000}:55000"
+    environment:
+      - INDEXER_URL=https://wazuh-indexer:9200
+      - INDEXER_USERNAME=${WAZUH_INDEXER_USER:-admin}
+      - INDEXER_PASSWORD=${WAZUH_INDEXER_PASS:-SecretPassword}
+      - FILEBEAT_SSL_VERIFICATION_MODE=full
+    volumes:
+      - wazuh-api-configuration:/var/ossec/api/configuration
+      - wazuh-etc:/var/ossec/etc
+      - wazuh-logs:/var/ossec/logs
+      - wazuh-queue:/var/ossec/queue
+      - wazuh-var-multigroups:/var/ossec/var/multigroups
+      - wazuh-integrations:/var/ossec/integrations
+      - wazuh-active-response:/var/ossec/active-response/bin
+      - wazuh-agentless:/var/ossec/agentless
+      - wazuh-wodles:/var/ossec/wodles
+      - ./wazuh-config/custom-rules.xml:/var/ossec/etc/rules/local_rules.xml
+    networks:
+      - soc-network
+
+  wazuh-indexer:
+    image: wazuh/wazuh-indexer:4.7.3
+    hostname: wazuh-indexer
+    container_name: wazuh-indexer
+    restart: always
+    ports:
+      - "${WAZUH_INDEXER_PORT:-9200}:9200"
+    environment:
+      - "OPENSEARCH_JAVA_OPTS=-Xms1g -Xmx1g"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+      nofile:
+        soft: 65536
+        hard: 65536
+    volumes:
+      - wazuh-indexer-data:/var/lib/wazuh-indexer
+    networks:
+      - soc-network
+
+  wazuh-dashboard:
+    image: wazuh/wazuh-dashboard:4.7.3
+    hostname: wazuh-dashboard
+    container_name: wazuh-dashboard
+    restart: always
+    ports:
+      - "${WAZUH_DASHBOARD_PORT:-443}:5601"
+    environment:
+      - INDEXER_USERNAME=${WAZUH_INDEXER_USER:-admin}
+      - INDEXER_PASSWORD=${WAZUH_INDEXER_PASS:-SecretPassword}
+      - WAZUH_API_URL=https://wazuh-manager
+      - DASHBOARD_USERNAME=kibanaserver
+      - DASHBOARD_PASSWORD=kibanaserver
+    depends_on:
+      - wazuh-indexer
+    networks:
+      - soc-network
+
+  # ============================================================================
+  # TIER 2: INCIDENT RESPONSE & CASE MANAGEMENT (THEHIVE & CORTEX)
+  # ============================================================================
+  cassandra:
+    image: cassandra:4.1
+    hostname: cassandra
+    container_name: thehive-cassandra
+    restart: unless-stopped
+    environment:
+      - CASSANDRA_CLUSTER_NAME=thehive
+    volumes:
+      - cassandra-data:/var/lib/cassandra
+    networks:
+      - soc-network
+
+  thehive-elasticsearch:
+    image: elasticsearch:7.17.12
+    hostname: elasticsearch
+    container_name: thehive-elasticsearch
+    restart: unless-stopped
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    volumes:
+      - thehive-elasticsearch-data:/usr/share/elasticsearch/data
+    networks:
+      - soc-network
+
+  thehive:
+    image: strangebee/thehive:5.2
+    hostname: thehive
+    container_name: thehive
+    restart: unless-stopped
+    depends_on:
+      - cassandra
+      - thehive-elasticsearch
+    ports:
+      - "${THEHIVE_PORT:-9000}:9000"
+    environment:
+      - JVM_OPTS="-Xms512m -Xmx1g"
+    volumes:
+      - thehive-data:/opt/thp/thehive/data
+      - ./thehive-config/case-templates.json:/opt/thp/thehive/conf/case-templates.json
+    command:
+      - --secret
+      - "SuperSecretForTheHive"
+      - "--cql-hostnames"
+      - "cassandra"
+      - "--index-backend"
+      - "elasticsearch"
+      - "--es-hostnames"
+      - "elasticsearch"
+    networks:
+      - soc-network
+
+  cortex:
+    image: thehiveproject/cortex:3.1.7
+    hostname: cortex
+    container_name: cortex
+    restart: unless-stopped
+    ports:
+      - "${CORTEX_PORT:-9001}:9001"
+    depends_on:
+      - thehive-elasticsearch
+    environment:
+      - job_directory=/opt/cortex/jobs
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - cortex-data:/var/log/cortex
+    networks:
+      - soc-network
+
+  # ============================================================================
+  # TIER 3: SOAR ORCHESTRATION (SHUFFLE)
+  # ============================================================================
+  shuffle-frontend:
+    image: ghcr.io/shuffle/shuffle-frontend:latest
+    hostname: shuffle-frontend
+    container_name: shuffle-frontend
+    restart: unless-stopped
+    ports:
+      - "${SHUFFLE_FRONTEND_PORT:-3001}:80"
+      - "${SHUFFLE_FRONTEND_SSL:-3443}:443"
+    environment:
+      - BACKEND_HOSTNAME=shuffle-backend
+    depends_on:
+      - shuffle-backend
+    networks:
+      - soc-network
+
+  shuffle-backend:
+    image: ghcr.io/shuffle/shuffle-backend:latest
+    hostname: shuffle-backend
+    container_name: shuffle-backend
+    restart: unless-stopped
+    ports:
+      - "${SHUFFLE_BACKEND_PORT:-5001}:5001"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - shuffle-data:/shuffle-database
+    environment:
+      - DATASTORE_EMULATOR_HOST=shuffle-database:8000
+      - SHUFFLE_APP_HOTLOAD_FOLDER=./shuffle-apps
+      - SHUFFLE_FILE_LOCATION=./files
+      - SHUFFLE_OPENSEARCH_URL=http://opensearch:9200
+      - SHUFFLE_DEFAULT_USERNAME=${SHUFFLE_USER:-admin}
+      - SHUFFLE_DEFAULT_PASSWORD=${SHUFFLE_PASS:-password}
+      - SHUFFLE_DEFAULT_APIKEY=${SHUFFLE_APIKEY:-mysupersecretkey}
+      - BASE_URL=http://shuffle-backend:5001
+    depends_on:
+      - shuffle-opensearch
+    networks:
+      - soc-network
+
+  shuffle-orborus:
+    image: ghcr.io/shuffle/shuffle-orborus:latest
+    hostname: shuffle-orborus
+    container_name: shuffle-orborus
+    restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - SHUFFLE_APP_SDK_VERSION=latest
+      - SHUFFLE_WORKER_VERSION=latest
+      - ORG_ID=Shuffle
+      - SHUFFLE_EXECUTION_TIMEOUT=600
+      - SHUFFLE_BASE_URL=http://shuffle-backend:5001
+      - SHUFFLE_DOCKER_API_VERSION=1.40
+    depends_on:
+      - shuffle-backend
+    networks:
+      - soc-network
+
+  shuffle-opensearch:
+    image: opensearchproject/opensearch:2.5.0
+    hostname: opensearch
+    container_name: shuffle-opensearch
+    restart: unless-stopped
+    environment:
+      - discovery.type=single-node
+      - plugins.security.disabled=true
+      - "OPENSEARCH_JAVA_OPTS=-Xms1024m -Xmx1024m"
+    volumes:
+      - shuffle-opensearch-data:/usr/share/opensearch/data
+    ports:
+      - "${SHUFFLE_OPENSEARCH_PORT:-9202}:9200"
+    networks:
+      - soc-network
+
+  shuffle-database:
+    image: google/cloud-sdk
+    hostname: shuffle-database
+    container_name: shuffle-database
+    restart: unless-stopped
+    command: gcloud beta emulators datastore start --project=shuffle --host-port=0.0.0.0:8000
+    ports:
+      - "${SHUFFLE_DB_PORT:-8000}:8000"
+    networks:
+      - soc-network
+
+  # ============================================================================
+  # TIER 4: THREAT INTELLIGENCE (MISP)
+  # ============================================================================
+  misp-db:
+    image: mysql:8.0
+    container_name: misp-db
+    restart: unless-stopped
+    environment:
+      - MYSQL_DATABASE=misp
+      - MYSQL_USER=misp
+      - MYSQL_PASSWORD=misp_password
+      - MYSQL_ROOT_PASSWORD=root_password
+    volumes:
+      - misp-db-data:/var/lib/mysql
+    networks:
+      - soc-network
+
+  misp-redis:
+    image: redis:7
+    container_name: misp-redis
+    restart: unless-stopped
+    networks:
+      - soc-network
+
+  misp:
+    image: ghcr.io/misp/misp-docker/misp-core:latest
+    container_name: misp
+    restart: unless-stopped
+    ports:
+      - "${MISP_HTTP_PORT:-8080}:80"
+      - "${MISP_HTTPS_PORT:-8443}:443"
+    depends_on:
+      - misp-db
+      - misp-redis
+    environment:
+      - MISP_BASEURL=http://localhost:8080
+      - MYSQL_HOST=misp-db
+      - MYSQL_PORT=3306
+      - MYSQL_DATABASE=misp
+      - MYSQL_USER=misp
+      - MYSQL_PASSWORD=misp_password
+      - REDIS_HOST=misp-redis
+      - REDIS_PORT=6379
+      - MISP_ADMIN_EMAIL=admin@admin.test
+      - MISP_ADMIN_PASSPHRASE=admin
+      - MISP_ORG=SOC-Lab
+      - GPG_PASSPHRASE=passphrase
+    volumes:
+      - misp-data:/var/www/MISP/app/files
+      - misp-tmp:/tmp/misp_tmp
+    networks:
+      - soc-network
+
+  # ============================================================================
+  # TIER 5: AIR-GAPPED LOCAL AI (OLLAMA & AI SOC ENGINE)
+  # ============================================================================
+  ollama:
+    image: ollama/ollama:latest
+    hostname: ollama
+    container_name: ollama
+    restart: unless-stopped
+    ports:
+      - "${OLLAMA_PORT:-11434}:11434"
+    volumes:
+      - ollama-models:/root/.ollama
+    networks:
+      - soc-network
+
+  ai-engine:
+    build:
+      context: ./ai-engine
+      dockerfile: Dockerfile
+    hostname: ai-engine
+    container_name: ai-engine
+    restart: unless-stopped
+    ports:
+      - "${AI_ENGINE_PORT:-8888}:8888"
+    environment:
+      - OLLAMA_HOST=http://ollama:11434
+      - THEHIVE_URL=http://thehive:9000
+      - THEHIVE_API_KEY=${THEHIVE_API_KEY:-your_thehive_api_key}
+      - MODEL_NAME=${MODEL_NAME:-llama3}
+      - LOG_LEVEL=INFO
+    depends_on:
+      - ollama
+    networks:
+      - soc-network
+
+# ============================================================================
+# NETWORKS & VOLUMES
+# ============================================================================
+networks:
+  soc-network:
+    name: soc-network
+    driver: bridge
+
+volumes:
+  # Wazuh
+  wazuh-api-configuration:
+  wazuh-etc:
+  wazuh-logs:
+  wazuh-queue:
+  wazuh-var-multigroups:
+  wazuh-integrations:
+  wazuh-active-response:
+  wazuh-agentless:
+  wazuh-wodles:
+  wazuh-indexer-data:
+  # TheHive
+  cassandra-data:
+  thehive-elasticsearch-data:
+  thehive-data:
+  cortex-data:
+  # Shuffle
+  shuffle-data:
+  shuffle-opensearch-data:
+  # MISP
+  misp-db-data:
+  misp-data:
+  misp-tmp:
+  # Ollama
+  ollama-models:

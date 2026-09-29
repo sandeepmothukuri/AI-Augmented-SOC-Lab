@@ -9,7 +9,8 @@
 
 [CmdletBinding()]
 param (
-    [switch]$SkipCheck
+    [switch]$SkipCheck,
+    [switch]$Tiered
 )
 
 $ErrorActionPreference = "Stop"
@@ -118,14 +119,22 @@ if (-not $SkipCheck) {
 Initialize-Network
 
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-$dockerDir = Join-Path (Split-Path -Parent $scriptDir) "docker"
+$rootDir = Split-Path -Parent $scriptDir
+$dockerDir = Join-Path $rootDir "docker"
+$unifiedCompose = Join-Path $rootDir "docker-compose.yml"
 
-Deploy-Service -ServiceName "Wazuh SIEM & EDR" -ComposeFile (Join-Path $dockerDir "docker-compose.wazuh.yml")
-Start-Sleep -Seconds 10
+if ($Tiered -or (-not (Test-Path $unifiedCompose))) {
+    Write-Log "Deploying in tiered mode..."
+    Deploy-Service -ServiceName "Wazuh SIEM & EDR" -ComposeFile (Join-Path $dockerDir "docker-compose.wazuh.yml")
+    Start-Sleep -Seconds 10
 
-Deploy-Service -ServiceName "TheHive & Cortex" -ComposeFile (Join-Path $dockerDir "docker-compose.thehive.yml")
-Deploy-Service -ServiceName "Shuffle SOAR" -ComposeFile (Join-Path $dockerDir "docker-compose.shuffle.yml")
-Deploy-Service -ServiceName "MISP Threat Intel" -ComposeFile (Join-Path $dockerDir "docker-compose.misp.yml")
-Deploy-Service -ServiceName "Ollama & AI Engine" -ComposeFile (Join-Path $dockerDir "docker-compose.ollama.yml")
+    Deploy-Service -ServiceName "TheHive & Cortex" -ComposeFile (Join-Path $dockerDir "docker-compose.thehive.yml")
+    Deploy-Service -ServiceName "Shuffle SOAR" -ComposeFile (Join-Path $dockerDir "docker-compose.shuffle.yml")
+    Deploy-Service -ServiceName "MISP Threat Intel" -ComposeFile (Join-Path $dockerDir "docker-compose.misp.yml")
+    Deploy-Service -ServiceName "Ollama & AI Engine" -ComposeFile (Join-Path $dockerDir "docker-compose.ollama.yml")
+} else {
+    Write-Log "Deploying unified stack via root docker-compose.yml..."
+    docker compose -f $unifiedCompose up -d
+}
 
 Show-Summary

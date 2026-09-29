@@ -19,6 +19,7 @@ from pydantic import BaseModel, Field, ValidationError
 
 logger = logging.getLogger(__name__)
 PROMPT_DIR = Path(__file__).parent / "prompts"
+KB_DIR = Path(__file__).parent / "knowledge_base"
 
 MITRE_PATTERNS = {
     "brute force": ("TA0006 - Credential Access", "T1110 - Brute Force"),
@@ -194,13 +195,55 @@ class AlertAnalyzer:
             logger.exception("LLM analysis error: %s", exc)
             raise
 
+    def _lookup_runbook(self, text: str) -> dict[str, Any] | None:
+        """Retrieve corresponding SOC runbook from the local knowledge base."""
+        query = text.lower()
+        mapping = {
+            "brute force": "brute_force.json",
+            "ssh": "brute_force.json",
+            "malware": "malware_ransomware.json",
+            "ransomware": "malware_ransomware.json",
+            "sql": "web_attack.json",
+            "web shell": "web_attack.json",
+            "exfiltration": "data_exfiltration.json",
+            "dns": "data_exfiltration.json",
+        }
+        for keyword, filename in mapping.items():
+            if keyword in query:
+                kb_path = KB_DIR / filename
+                if kb_path.exists():
+                    try:
+                        return json.loads(kb_path.read_text(encoding="utf-8"))
+                    except Exception as exc:
+                        logger.warning("Error reading runbook %s: %s", filename, exc)
+        return None
+
     async def generate_playbook(self, alert_type: str, context: str = "") -> list[str]:
-        raw = self.playbook_chain.run(
-            alert_type=alert_type, context=context or "No additional context"
-        )
-        lines = [line.strip() for line in raw.strip().splitlines() if line.strip()]
-        steps = [re.sub(r"^\d+[\.\)]\s*", "", line) for line in lines]
-        return steps[:10]
+        # First check knowledge base for grounded SOC runbook steps
+        runbook = self._lookup_runbook(alert_type)
+        if runbook:
+            steps: list[str] = []
+            for category in ("containment_steps", "investigation_steps", "remediation_steps"):
+                steps.extend(runbook.get(category, []))
+            if steps:
+                return steps[:10]
+
+        try:
+            raw = self.playbook_chain.run(
+                alert_type=alert_type, context=context or "No additional context"
+            )
+            lines = [line.strip() for line in raw.strip().splitlines() if line.strip()]
+            steps = [re.sub(r"^\d+[\.\)]\s*", "", line) for line in lines]
+            return steps[:10]
+        except Exception as exc:
+            logger.warning("LLM playbook generation failed, using standard fallback: %s", exc)
+            return [
+                "Isolate affected host from network",
+                "Preserve volatile memory and logs",
+                "Terminate offending processes",
+                "Identify initial access vector",
+                "Rotate compromised credentials",
+            ]
 
     async def nl_to_dsl(self, question: str) -> dict:
         raw = self.nl_dsl_chain.run(question=question)

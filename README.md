@@ -226,25 +226,32 @@ docker network create soc-network
 
 ### Step 2: Automated Multi-Tier Stack Deployment
 
-The laboratory is split into modular Docker Compose configurations in `docker/`:
-1. `docker-compose.wazuh.yml` — Wazuh Manager, Indexer, Dashboard
-2. `docker-compose.thehive.yml` — TheHive 5, Cortex, Cassandra, Elasticsearch
-3. `docker-compose.shuffle.yml` — Shuffle Frontend, Backend, Orborus, OpenSearch, Datastore
-4. `docker-compose.misp.yml` — MISP Core, MySQL 8.0, Redis
-5. `docker-compose.ollama.yml` — Ollama Local LLM & AI Engine (FastAPI)
+The laboratory can be launched either as a **unified all-in-one stack** (single command) or deployed **tier-by-tier** for resource-constrained systems.
 
-#### Option A: Linux / WSL2 One-Click Deployment
+#### Option A: Unified All-in-One Deployment (Recommended)
+Launch all 17 services across all 5 tiers using the master root `docker-compose.yml`:
+
 ```bash
-chmod +x scripts/*.sh
-./scripts/deploy.sh
+# Optional: customize ports and secrets
+cp .env.example .env
+
+# Deploy the entire SOC lab in the background
+docker compose up -d
 ```
 
-#### Option B: Windows PowerShell One-Click Deployment
-```powershell
-.\scripts\deploy.ps1
-```
+#### Option B: Automated Scripted Deployment
+- **On Linux / WSL2**:
+  ```bash
+  chmod +x scripts/*.sh
+  ./scripts/deploy.sh
+  ```
+- **On Windows (PowerShell as Administrator)**:
+  ```powershell
+  .\scripts\deploy.ps1
+  ```
 
-#### Option C: Manual Step-by-Step Deployment
+#### Option C: Tiered Deployment (For Systems with <= 16 GB RAM)
+To deploy individual tiers sequentially and manage memory consumption:
 ```bash
 # Tier 1: Deploy Wazuh SIEM
 docker compose -f docker/docker-compose.wazuh.yml up -d
@@ -618,6 +625,12 @@ ai-engine/
 ├── analyzer.py           # Core triage chains, Pydantic contracts, MITRE mapper
 ├── thehive_client.py     # Asynchronous client for automated case generation
 ├── requirements.txt      # Dependency specification
+├── knowledge_base/       # Grounded SOC IR runbooks (brute force, ransomware, web, etc.)
+│   ├── brute_force.json
+│   ├── malware_ransomware.json
+│   ├── web_attack.json
+│   ├── data_exfiltration.json
+│   └── privilege_escalation.json
 └── prompts/
     ├── triage.txt        # Strict classification prompt (ESCALATE|CLOSE|ENRICH)
     ├── summary.txt       # Technical 2-3 sentence incident briefing
@@ -675,35 +688,41 @@ class TriageDecision(BaseModel):
 
 ## 🧪 End-to-End Attack Simulation & Detection Scenarios
 
-The repository includes deterministic scenario generators in `scripts/send-test-alert.py`:
+The repository includes both quick test scripts (`scripts/send-test-alert.py`) and an **advanced adversary emulation runner** (`scripts/simulate-attacks.py`) that can transmit synthetic alerts directly to the AI Engine and over live **UDP Syslog (port 514)** to Wazuh Manager:
 
 ```bash
-# Execute individual test scenarios:
-python scripts/send-test-alert.py ssh-bruteforce
-python scripts/send-test-alert.py port-scan
-python scripts/send-test-alert.py web-attack
-python scripts/send-test-alert.py malware
-python scripts/send-test-alert.py data-exfil
+# Execute advanced adversary simulation runner (All 8 Scenarios):
+python scripts/simulate-attacks.py all
 
-# Execute all scenarios sequentially:
-python scripts/send-test-alert.py all
+# Run specific attack scenario:
+python scripts/simulate-attacks.py ssh-bruteforce
+python scripts/simulate-attacks.py web-shell
+python scripts/simulate-attacks.py ransomware-fim
+
+# Stream live UDP Syslog into Wazuh Manager while analyzing:
+python scripts/simulate-attacks.py all --syslog --wazuh-host localhost --wazuh-port 514
 ```
 
-### Scenario Execution Matrix:
+### Complete Multi-Stage Scenario Matrix:
 
-| ID | Attack Technique | Simulated Telemetry | Wazuh Rule | ATT&CK Mapping | Expected Disposition |
+| ID | Attack Technique | Simulated Telemetry / Indicator | Wazuh Rule | ATT&CK Mapping | Expected Disposition |
 |---|---|---|---|---|---|
 | **SOC-001** | SSH Brute Force & Success | 200 failed auths + 1 accepted login for root | `5712`, `100001` | Credential Access (`T1110`) | `ESCALATE` (Critical) |
 | **SOC-002** | External Port Scan | 2000 SYN packets across ports within 30s | `ET-SCAN-001` | Discovery (`T1046`) | `ESCALATE` (High) |
 | **SOC-003** | Web SQL Injection | `UNION SELECT` injection via POST `/login` | `31103` | Initial Access (`T1190`) | `ESCALATE` (High) |
-| **SOC-004** | Malware Execution | Suspicious executable spawned `cmd.exe` | `553`, `100006` | Execution (`T1204`) | `ESCALATE` (Critical) |
-| **SOC-005** | DNS Tunneling Exfiltration | 4500 high-entropy DNS queries / hour | `100008` | Exfiltration (`T1071.004`) | `ENRICH` / `ESCALATE` |
+| **SOC-004** | Web Shell Execution | Command execution via PHP upload (`whoami`) | `100003` | Persistence (`T1505.003`) | `ESCALATE` (Critical) |
+| **SOC-005** | Unauthorized Sudo Abuse | User not in sudoers executing `/bin/bash` | `100002` | Privilege Escalation (`T1068`) | `ESCALATE` (High) |
+| **SOC-006** | Ransomware Mass Encryption | 64 file extensions modified to `.encrypted` | `553`, `100006` | Impact (`T1486`) | `ESCALATE` (Critical) |
+| **SOC-007** | DNS Tunneling Exfiltration | 4500 high-entropy DNS queries / hour | `100008` | Exfiltration (`T1071.004`) | `ENRICH` / `ESCALATE` |
+| **SOC-008** | Windows Pass-the-Hash | NTLM LogonType 3 from non-domain workstation | `100007` | Lateral Movement (`T1550.002`) | `ESCALATE` (High) |
 
 ---
 
-## 🛡️ Detection Rules as Code & MITRE ATT&CK Mapping
+## 🛡️ Detection Rules as Code & Endpoint Telemetry Templates
 
-Custom detection rules are defined in [`wazuh-config/custom-rules.xml`](wazuh-config/custom-rules.xml):
+Custom detection rules and auditing configurations are version-controlled in [`wazuh-config/`](wazuh-config/):
+
+### Custom Wazuh XML Detection Rules (`wazuh-config/custom-rules.xml`):
 
 | Rule ID | Level | Rule Description | Group / Category | MITRE Technique |
 |---|---|---|---|---|
@@ -715,6 +734,11 @@ Custom detection rules are defined in [`wazuh-config/custom-rules.xml`](wazuh-co
 | `100006` | **15** | CRITICAL: Ransomware activity detected - mass file modification (`.encrypted`) | `ransomware` | `T1486` (Data Encrypted for Impact) |
 | `100007` | **12** | NTLM network logon detected - possible pass-the-hash attack | `credential_theft` | `T1550.002` (Pass the Hash) |
 | `100008` | **9** | Abnormally long DNS query length - possible DNS tunneling | `dns_tunneling` | `T1071.004` (Application Protocol: DNS) |
+
+### Hardened Endpoint Auditing Templates:
+- [`wazuh-config/ossec.conf`](wazuh-config/ossec.conf): Reference Wazuh Manager configuration with Shuffle webhook `<integration>` and automated `<active-response>` definitions (`firewall-drop`).
+- [`wazuh-config/sysmonconfig.xml`](wazuh-config/sysmonconfig.xml): Production-ready Sysmon configuration auditing process trees (Event ID 1), outbound socket connections (Event ID 3), DLL injection (Event ID 7/8), and ransomware file extensions (Event ID 11).
+- [`wazuh-config/audit.rules`](wazuh-config/audit.rules): Linux audit daemon rules tracking `execve` system calls, `/etc/sudoers` modifications, and user identity changes.
 
 ---
 

@@ -102,7 +102,7 @@ class TheHiveClient:
 
 ## Response Playbook
 
-{chr(10).join(f"{i+1}. {step}" for i, step in enumerate(triage.get('playbook_steps', [])))}
+{chr(10).join(f"{i + 1}. {step}" for i, step in enumerate(triage.get('playbook_steps', [])))}
 
 ---
 

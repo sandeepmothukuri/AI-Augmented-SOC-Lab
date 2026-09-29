@@ -56,3 +56,20 @@ def test_wazuh_severity_normalization(analyzer):
     assert analyzer._normalize_severity(10) == "HIGH"
     assert analyzer._normalize_severity(7) == "MEDIUM"
     assert analyzer._normalize_severity(3) == "LOW"
+
+
+def test_lookup_runbook_finds_matching_guide(analyzer):
+    bf = analyzer._lookup_runbook("SSH brute force attack")
+    assert bf is not None
+    assert bf["category"] == "brute_force"
+    assert "T1110" in bf["mitre_techniques"]
+    assert len(bf["containment_steps"]) > 0
+
+    rw = analyzer._lookup_runbook("Suspected ransomware activity")
+    assert rw is not None
+    assert rw["category"] == "malware_ransomware"
+    assert "T1486" in rw["mitre_techniques"]
+
+
+def test_lookup_runbook_returns_none_for_unknown(analyzer):
+    assert analyzer._lookup_runbook("unknown generic event") is None

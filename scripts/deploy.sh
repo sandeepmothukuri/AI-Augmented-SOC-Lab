@@ -95,20 +95,28 @@ main() {
     set_system_params
     create_network
 
-    DOCKER_DIR="$(dirname "$0")/../docker"
+    ROOT_DIR="$(dirname "$0")/.."
+    DOCKER_DIR="$ROOT_DIR/docker"
+    UNIFIED_COMPOSE="$ROOT_DIR/docker-compose.yml"
 
-    deploy_service "Wazuh SIEM" "$DOCKER_DIR/docker-compose.wazuh.yml"
-    sleep 15
+    if [ "${1:-}" = "--tiered" ] || [ ! -f "$UNIFIED_COMPOSE" ]; then
+        log "Deploying in tiered mode..."
+        deploy_service "Wazuh SIEM" "$DOCKER_DIR/docker-compose.wazuh.yml"
+        sleep 15
 
-    deploy_service "TheHive + Cortex" "$DOCKER_DIR/docker-compose.thehive.yml"
-    deploy_service "Shuffle SOAR" "$DOCKER_DIR/docker-compose.shuffle.yml"
-    deploy_service "MISP" "$DOCKER_DIR/docker-compose.misp.yml"
+        deploy_service "TheHive + Cortex" "$DOCKER_DIR/docker-compose.thehive.yml"
+        deploy_service "Shuffle SOAR" "$DOCKER_DIR/docker-compose.shuffle.yml"
+        deploy_service "MISP" "$DOCKER_DIR/docker-compose.misp.yml"
 
-    wait_for_service "Wazuh" "https://localhost:443" 180
-    wait_for_service "TheHive" "http://localhost:9000" 120
-    wait_for_service "Shuffle" "http://localhost:3001" 120
+        wait_for_service "Wazuh" "https://localhost:443" 180
+        wait_for_service "TheHive" "http://localhost:9000" 120
+        wait_for_service "Shuffle" "http://localhost:3001" 120
 
-    deploy_service "Ollama + AI Engine" "$DOCKER_DIR/docker-compose.ollama.yml"
+        deploy_service "Ollama + AI Engine" "$DOCKER_DIR/docker-compose.ollama.yml"
+    else
+        log "Deploying unified stack via root docker-compose.yml..."
+        docker compose -f "$UNIFIED_COMPOSE" up -d
+    fi
 
     wait_for_service "AI Engine" "http://localhost:8888/health" 120
 

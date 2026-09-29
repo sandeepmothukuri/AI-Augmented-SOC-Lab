@@ -1,0 +1,21 @@
+{
+  "category": "web_attack",
+  "name": "Web Application Exploitation & Web Shell Runbook",
+  "mitre_techniques": ["T1190", "T1505.003"],
+  "severity_baseline": "HIGH",
+  "containment_steps": [
+    "Block attacker IP address at WAF or reverse proxy level",
+    "Quarantine or delete uploaded malicious script/webshell file immediately",
+    "Temporarily set web application into maintenance mode if active compromise suspected"
+  ],
+  "investigation_steps": [
+    "Inspect web server access and error logs for injection payloads and status codes",
+    "Identify which web parameters and URIs were targeted (e.g. SQLi, command injection)",
+    "Audit directory permissions in webroot for unauthorized file creation"
+  ],
+  "remediation_steps": [
+    "Patch vulnerable application code or apply parameterized queries",
+    "Restrict upload directory permissions to disable script execution",
+    "Rotate database credentials if SQL injection compromise occurred"
+  ]
+}

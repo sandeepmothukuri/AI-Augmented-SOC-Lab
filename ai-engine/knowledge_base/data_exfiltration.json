@@ -1,0 +1,21 @@
+{
+  "category": "data_exfiltration",
+  "name": "Data Exfiltration & DNS Tunneling Incident Runbook",
+  "mitre_techniques": ["T1041", "T1048", "T1071.004"],
+  "severity_baseline": "HIGH",
+  "containment_steps": [
+    "Block destination IP/C2 domain at external DNS resolver and edge proxy",
+    "Sinkhole suspicious authoritative nameserver domains immediately",
+    "Temporarily disconnect suspected internal transmitting endpoint"
+  ],
+  "investigation_steps": [
+    "Quantify volume of data transferred using Zeek conn.log or NetFlow",
+    "Analyze query entropy and subdomain length in Zeek dns.log to confirm tunneling",
+    "Identify originating user account and process ID responsible for traffic"
+  ],
+  "remediation_steps": [
+    "Implement DNS response rate limiting and block non-standard DNS resolvers",
+    "Conduct sensitive data breach assessment to evaluate regulatory impact",
+    "Retain network flow records and PCAP files for forensic chain of custody"
+  ]
+}

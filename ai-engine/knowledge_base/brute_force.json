@@ -1,0 +1,21 @@
+{
+  "category": "brute_force",
+  "name": "Credential Access & Brute Force IR Runbook",
+  "mitre_techniques": ["T1110", "T1110.001", "T1110.003"],
+  "severity_baseline": "HIGH",
+  "containment_steps": [
+    "Block offending source IP at border firewall or cloud security group",
+    "Temporarily lock targeted user accounts if multiple failed attempts observed",
+    "Terminate active sessions from the offending IP using loginctl or kill"
+  ],
+  "investigation_steps": [
+    "Verify whether authentication success occurred following failure bursts",
+    "Inspect auth.log / Event ID 4624 for secondary logon activity or session spawning",
+    "Cross-reference source IP against MISP and abuse database feeds"
+  ],
+  "remediation_steps": [
+    "Enforce mandatory password rotation for targeted user accounts",
+    "Ensure Multi-Factor Authentication (MFA) is strictly enforced",
+    "Disable root login over SSH (PermitRootLogin no in sshd_config)"
+  ]
+}

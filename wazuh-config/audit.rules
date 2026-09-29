@@ -1,0 +1,36 @@
+# Linux Auditd Rules for AI-Augmented SOC Lab
+# Monitors process execution, privilege escalation, and critical files
+
+# Delete all existing rules
+-D
+
+# Buffer Size
+-b 8192
+
+# Failure Mode (1=printk, 2=panic)
+-f 1
+
+# Monitor Execution of sensitive commands
+-a always,exit -F arch=b64 -S execve -k process_exec
+-a always,exit -F arch=b32 -S execve -k process_exec
+
+# Monitor Modifications to Authentication & User accounts
+-w /etc/passwd -p wa -k identity_changes
+-w /etc/shadow -p wa -k identity_changes
+-w /etc/group -p wa -k identity_changes
+-w /etc/gshadow -p wa -k identity_changes
+-w /etc/security/opasswd -p wa -k identity_changes
+
+# Monitor Sudoers Changes (Privilege Escalation)
+-w /etc/sudoers -p wa -k priv_esc
+-w /etc/sudoers.d/ -p wa -k priv_esc
+
+# Monitor SSH Configuration & Keys
+-w /etc/ssh/sshd_config -p wa -k sshd_config
+-w /root/.ssh/ -p wa -k root_ssh
+
+# Monitor Cron & Persistence
+-w /etc/crontab -p wa -k persistence
+-w /etc/cron.d/ -p wa -k persistence
+-w /etc/cron.daily/ -p wa -k persistence
+-w /etc/systemd/system/ -p wa -k persistence
