@@ -193,5 +193,56 @@
         "group": "Closure"
       }
     ]
+  },
+  {
+    "name": "AI-SOC: Web Attack",
+    "titlePrefix": "[WEB]",
+    "description": "Template for web application attacks (SQL injection, XSS, web shells, directory traversal) detected by Wazuh or WAF",
+    "severity": 2,
+    "tags": ["web-attack", "sqli", "xss", "webshell", "ai-detected", "T1190"],
+    "tlp": 2,
+    "tasks": [
+      {
+        "title": "Block attacking source IP at WAF / Firewall",
+        "description": "Immediately drop traffic from offending IP at border firewall or cloud WAF. Check if distributed botnet.",
+        "group": "Containment"
+      },
+      {
+        "title": "Disable or restrict vulnerable web route",
+        "description": "If zero-day or unpatched flaw, temporarily disable vulnerable endpoint or enable strict WAF virtual patch.",
+        "group": "Containment"
+      },
+      {
+        "title": "Inspect HTTP access and error logs",
+        "description": "Review full URI, headers, method, status codes, and response sizes. Determine if requests returned 200 OK or 500 errors.",
+        "group": "Investigation"
+      },
+      {
+        "title": "Verify database integrity and data access",
+        "description": "For SQLi: review database query logs for unauthorized SELECT/UNION/DROP statements and verify if sensitive tables were dumped.",
+        "group": "Investigation"
+      },
+      {
+        "title": "Scan web root for web shells and backdoors",
+        "description": "Run file integrity scan (Wazuh FIM) or ClamAV/YARA across /var/www/html for recently modified or newly created executable scripts.",
+        "group": "Investigation"
+      },
+      {
+        "title": "Patch application source code or dependencies",
+        "description": "Apply parameterized queries for SQLi, output encoding for XSS, strict path validation for directory traversal.",
+        "group": "Remediation"
+      },
+      {
+        "title": "Rotate backend database and service credentials",
+        "description": "If SQL injection occurred, rotate database user passwords and application connection string tokens immediately.",
+        "group": "Remediation"
+      },
+      {
+        "title": "Share attacking indicators with MISP and write report",
+        "description": "Submit attacking IP addresses, user-agents, and attack payloads to MISP. Complete post-incident review.",
+        "group": "Closure"
+      }
+    ]
   }
 ]
+

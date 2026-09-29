@@ -105,6 +105,28 @@ TEST_ALERTS = {
             "threat_level": "high",
         },
     },
+    "privilege-escalation": {
+        "alert_id": "TEST-006",
+        "source": "wazuh",
+        "rule_id": "100004",
+        "rule_description": "Privilege escalation: unauthorized sudo access or SUID execution",
+        "severity": 13,
+        "source_ip": "192.168.1.105",
+        "dest_ip": "192.168.1.10",
+        "hostname": "linux-prod-db01",
+        "timestamp": now(),
+        "raw_log": (
+            "auditd: type=SYSCALL arch=c000003e syscall=59 success=yes comm=sudo "
+            "exe=/usr/bin/sudo auid=1001 uid=1001 gid=1001 euid=0 egid=0 | "
+            "pam_unix(sudo:auth): authentication failure; logname=analyst uid=1001 euid=0"
+        ),
+        "geo_info": None,
+        "misp_context": {
+            "found": True,
+            "tags": ["synthetic-test", "privilege-escalation", "T1068"],
+            "threat_level": "high",
+        },
+    },
 }
 
 

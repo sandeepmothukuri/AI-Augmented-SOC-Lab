@@ -96,3 +96,21 @@ def test_lookup_runbook_web_attack_variants(analyzer):
     sqli = analyzer._lookup_runbook("SQL injection attempt on /login endpoint")
     assert sqli is not None
     assert sqli["category"] == "web_attack"
+
+
+def test_generate_playbook_from_knowledge_base(analyzer):
+    import asyncio
+
+    steps = asyncio.run(analyzer.generate_playbook("SSH brute force attack detected"))
+    assert len(steps) > 0
+    assert len(steps) <= 10
+    # Confirm realistic security playbook steps are present
+    assert any("IP" in s or "firewall" in s or "host" in s or "account" in s for s in steps)
+
+
+def test_generate_playbook_privilege_escalation(analyzer):
+    import asyncio
+
+    steps = asyncio.run(analyzer.generate_playbook("Sudo privilege escalation exploit"))
+    assert len(steps) > 0
+    assert any("account" in s or "privileges" in s or "sudo" in s for s in steps)

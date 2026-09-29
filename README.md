@@ -341,6 +341,7 @@ To stream Wazuh alerts to Shuffle SOAR automatically:
 3. Import the pre-built workflows:
    - `shuffle-workflows/ssh-bruteforce.json`: Ingests SSH alerts, checks MISP, sends to AI Engine, notifies Slack.
    - `shuffle-workflows/malware-detection.json`: Ingests malware alerts, checks VirusTotal & MISP hashes, calls AI Engine, conditionally isolates host.
+   - `shuffle-workflows/web-attack.json`: Ingests web attack alerts (SQLi, XSS, web shells), queries AbuseIPDB & MISP, triggers AI triage, applies WAF blocks, and opens structured TheHive cases.
 4. Click on the **Webhook trigger node** in the imported workflow, copy the Webhook ID, and paste it into the Wazuh `hook_url`.
 
 #### 3. Configure TheHive 5 API Key & Import Case Templates
@@ -364,9 +365,40 @@ To stream Wazuh alerts to Shuffle SOAR automatically:
      -d @thehive-config/case-templates.json
    ```
 
+#### 4. Configure & Sync Threat Intelligence Feeds in MISP
+Automatically populate MISP with curated threat intelligence feeds (Abuse.ch, URLhaus, Feodo, MalwareBazaar, CIRCL):
+```bash
+export MISP_URL="https://localhost"
+export MISP_API_KEY="your_misp_automation_api_key"
+
+# Enable all curated OSINT threat feeds:
+python scripts/misp-feed-sync.py --enable-defaults
+
+# Trigger immediate background sync across all enabled feeds:
+python scripts/misp-feed-sync.py --sync-all
+
+# List active feeds and caching status:
+python scripts/misp-feed-sync.py --list-feeds
+```
+
 ---
 
 ### Step 5: Onboarding Endpoints (Linux & Windows Agents)
+
+#### Automated Agent Registration (Recommended):
+Use the built-in registration tool to interact directly with the Wazuh REST API:
+```bash
+# Register a Linux server and print agent installation instructions:
+python scripts/register-agent.py register --hostname web-server-01 --ip 192.168.1.50 --os linux
+
+# Register a Windows Domain Controller into the 'servers' group:
+python scripts/register-agent.py register --hostname win-dc-01 --ip 192.168.1.10 --os windows --group servers
+
+# View all registered agents and their connection status:
+python scripts/register-agent.py list
+```
+
+#### Manual Endpoint Onboarding:
 
 #### Linux Endpoints (Debian / Ubuntu):
 ```bash
@@ -412,10 +444,14 @@ Execute the health check scripts to confirm all services, ports, and container s
 
 Send a synthetic test alert to verify the AI Engine, Pydantic schema validation, and TheHive case generation:
 ```bash
-python scripts/send-test-alert.py ssh-bruteforce
+# Test individual scenario (ssh-bruteforce, web-attack, malware, data-exfil, privilege-escalation, port-scan):
+python scripts/send-test-alert.py privilege-escalation
+
+# Or test all scenarios sequentially:
+python scripts/send-test-alert.py all
 ```
 
-Expected output:
+Example output for SSH Brute Force:
 ```text
 Sending synthetic test alert: ssh-bruteforce
 Alert ID: TEST-001
