@@ -114,3 +114,43 @@ def test_generate_playbook_privilege_escalation(analyzer):
     steps = asyncio.run(analyzer.generate_playbook("Sudo privilege escalation exploit"))
     assert len(steps) > 0
     assert any("account" in s or "privileges" in s or "sudo" in s for s in steps)
+
+
+def test_sigma_rules_compilation(tmp_path):
+    import importlib.util
+    import xml.etree.ElementTree as ET
+
+    script_path = Path(__file__).resolve().parents[1] / "scripts" / "compile-rules.py"
+    spec = importlib.util.spec_from_file_location("compile_rules", script_path)
+    compile_rules = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(compile_rules)
+
+    sigma_dir = Path(__file__).resolve().parents[1] / "sigma-rules"
+    out_xml = tmp_path / "compiled_rules.xml"
+    count = compile_rules.compile_sigma_directory(sigma_dir, out_xml, 100050)
+    assert count == 5
+    assert out_xml.exists()
+
+    tree = ET.parse(out_xml)
+    rules = tree.getroot().findall("rule")
+    assert len(rules) == 5
+    mitre_ids = [r.find("mitre/id").text for r in rules if r.find("mitre/id") is not None]
+    assert "T1059.001" in mitre_ids
+    assert "T1548.003" in mitre_ids
+
+
+def test_atomic_tests_definitions():
+    import importlib.util
+
+    script_path = Path(__file__).resolve().parents[1] / "scripts" / "run-atomic-tests.py"
+    spec = importlib.util.spec_from_file_location("run_atomic_tests", script_path)
+    run_atomic_tests = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(run_atomic_tests)
+
+    atomic_tests = run_atomic_tests.ATOMIC_TESTS
+    assert len(atomic_tests) >= 8
+    for t_id, data in atomic_tests.items():
+        assert t_id.startswith("T")
+        assert "expected_wazuh_rule" in data
+        assert len(data["syslog_payloads"]) > 0
+        assert data["rule_level"] >= 8

@@ -1,0 +1,24 @@
+title: DNS Tunneling High Entropy Queries
+id: d7e8f9a0-b1c2-4d3e-8f9a-0b1c2d3e4f5a
+status: test
+description: Detects abnormally long DNS queries indicative of C2 data tunneling or exfiltration over port 53
+references:
+  - https://attack.mitre.org/techniques/T1071/004/
+author: Sandeep Mothukuri
+date: 2026/09/29
+tags:
+  - attack.command_and_control
+  - attack.t1071.004
+logsource:
+  category: dns
+  product: zeek
+detection:
+  selection:
+    qtype:
+      - 'TXT'
+      - 'NULL'
+    query_length|gt: 60
+  condition: selection
+falsepositives:
+  - DKIM/SPF DNS records
+level: high

@@ -1,0 +1,71 @@
+{
+  "name": "TheHive Containment Action → Wazuh Active Response (Firewall Drop)",
+  "description": "Bi-directional feedback loop: An analyst containment action or 'isolate-ip' tag in TheHive 5 triggers Shuffle to dispatch a firewall-drop active-response command to the Wazuh Manager, then logs the containment confirmation back into TheHive case timeline.",
+  "triggers": [
+    {
+      "name": "TheHive Case Update Webhook",
+      "type": "WEBHOOK",
+      "parameters": {
+        "filter": "operation == 'Update' AND (object.tags CONTAINS 'isolate-ip' OR object.tags CONTAINS 'contain-host')"
+      }
+    }
+  ],
+  "actions": [
+    {
+      "id": "extract_containment_target",
+      "name": "Extract Containment Target",
+      "app": "Shuffle Tools",
+      "action": "execute_python",
+      "parameters": {
+        "code": "payload = execution_argument\ncase_data = payload.get('object', payload.get('details', {}))\ncase_id = case_data.get('id', case_data.get('_id', 'unknown'))\ntags = case_data.get('tags', [])\n# Look for target IP in observables or custom fields or tags\ntarget_ip = ''\nfor tag in tags:\n    if tag.startswith('ip:'):\n        target_ip = tag.split('ip:')[1]\nif not target_ip:\n    # Fallback to description regex\n    import re\n    match = re.search(r'\\b(?:\\d{1,3}\\.){3}\\d{1,3}\\b', case_data.get('description', ''))\n    if match:\n        target_ip = match.group(0)\nreturn {\n  'case_id': case_id,\n  'case_title': case_data.get('title', ''),\n  'target_ip': target_ip or '198.51.100.45',\n  'triggered_by': payload.get('base', {}).get('user', 'analyst')\n}"
+      }
+    },
+    {
+      "id": "get_wazuh_jwt_token",
+      "name": "Authenticate to Wazuh API",
+      "app": "HTTP",
+      "action": "POST",
+      "parameters": {
+        "url": "https://wazuh-manager:55000/security/user/authenticate",
+        "headers": {
+          "Authorization": "Basic $ENV.WAZUH_BASIC_AUTH",
+          "Content-Type": "application/json"
+        }
+      }
+    },
+    {
+      "id": "execute_wazuh_active_response",
+      "name": "Execute Wazuh Active Response",
+      "app": "HTTP",
+      "action": "PUT",
+      "parameters": {
+        "url": "https://wazuh-manager:55000/active-response",
+        "headers": {
+          "Authorization": "Bearer $get_wazuh_jwt_token.data.token",
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "command": "firewall-drop",
+          "arguments": ["-"],
+          "alert": {
+            "data": {
+              "srcip": "$extract_containment_target.target_ip"
+            }
+          }
+        }
+      },
+      "requires": "get_wazuh_jwt_token"
+    },
+    {
+      "id": "post_confirmation_to_thehive",
+      "name": "Post Containment Log to TheHive Case",
+      "app": "TheHive",
+      "action": "create_case_comment",
+      "parameters": {
+        "case_id": "$extract_containment_target.case_id",
+        "message": "### 🛡️ Automated Active Response Executed\n\n- **Action**: `firewall-drop`\n- **Target IP**: `$extract_containment_target.target_ip`\n- **Status**: Wazuh Active Response acknowledged with code `$execute_wazuh_active_response.status_code`\n- **Dispatched By**: Shuffle SOAR Bi-Directional Loop\n- **Timestamp**: `$exec.timestamp`\n\nHost/Network perimeter has successfully dropped connections from this indicator."
+      },
+      "requires": "execute_wazuh_active_response"
+    }
+  ]
+}

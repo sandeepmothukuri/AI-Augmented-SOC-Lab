@@ -1,0 +1,28 @@
+title: Web Application SQL Injection via UNION SELECT
+id: e8f9a0b1-c2d3-4e4f-9a0b-1c2d3e4f5a6b
+status: test
+description: Detects SQL injection attempts leveraging UNION SELECT or boolean-based extraction in HTTP query strings
+references:
+  - https://attack.mitre.org/techniques/T1190/
+author: Sandeep Mothukuri
+date: 2026/09/29
+tags:
+  - attack.initial_access
+  - attack.t1190
+logsource:
+  category: webserver
+detection:
+  selection:
+    cs_method:
+      - 'GET'
+      - 'POST'
+    cs_uri_query|contains:
+      - 'UNION SELECT'
+      - 'UNION ALL SELECT'
+      - 'ORDER BY 1--'
+      - 'AND 1=1'
+      - 'OR 1=1'
+  condition: selection
+falsepositives:
+  - Security scanning or pentesting activities
+level: critical

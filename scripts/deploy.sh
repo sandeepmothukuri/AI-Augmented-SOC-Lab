@@ -107,6 +107,7 @@ main() {
         deploy_service "TheHive + Cortex" "$DOCKER_DIR/docker-compose.thehive.yml"
         deploy_service "Shuffle SOAR" "$DOCKER_DIR/docker-compose.shuffle.yml"
         deploy_service "MISP" "$DOCKER_DIR/docker-compose.misp.yml"
+        deploy_service "Suricata NIDS" "$DOCKER_DIR/docker-compose.network.yml"
 
         wait_for_service "Wazuh" "https://localhost:443" 180
         wait_for_service "TheHive" "http://localhost:9000" 120

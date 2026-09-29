@@ -131,6 +131,7 @@ if ($Tiered -or (-not (Test-Path $unifiedCompose))) {
     Deploy-Service -ServiceName "TheHive & Cortex" -ComposeFile (Join-Path $dockerDir "docker-compose.thehive.yml")
     Deploy-Service -ServiceName "Shuffle SOAR" -ComposeFile (Join-Path $dockerDir "docker-compose.shuffle.yml")
     Deploy-Service -ServiceName "MISP Threat Intel" -ComposeFile (Join-Path $dockerDir "docker-compose.misp.yml")
+    Deploy-Service -ServiceName "Suricata NIDS" -ComposeFile (Join-Path $dockerDir "docker-compose.network.yml")
     Deploy-Service -ServiceName "Ollama & AI Engine" -ComposeFile (Join-Path $dockerDir "docker-compose.ollama.yml")
 } else {
     Write-Log "Deploying unified stack via root docker-compose.yml..."

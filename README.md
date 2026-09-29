@@ -47,8 +47,12 @@
   - [Prompt Engineering Framework](#prompt-engineering-framework)
   - [Deterministic Pydantic Contracts & Fail-Closed Logic](#deterministic-pydantic-contracts--fail-closed-logic)
 - [🧪 End-to-End Attack Simulation & Detection Scenarios](#-end-to-end-attack-simulation--detection-scenarios)
-- [🛡️ Detection Rules as Code & MITRE ATT&CK Mapping](#️-detection-rules-as-code--mitre-attck-mapping)
+  - [Atomic Red Team Emulation Harness](#-atomic-red-team-emulation-harness-scriptsrun-atomic-testspy)
+  - [Network Sensor & Attack PCAP Replay Pipeline](#-network-sensor--attack-pcap-replay-pipeline)
+  - [Sigma-to-Wazuh Rules Engine](#️-sigma-to-wazuh-rules-engine-scriptscompile-rulespy)
+- [🛡️ Detection Rules as Code & Endpoint Telemetry Templates](#️-detection-rules-as-code--endpoint-telemetry-templates)
 - [📋 SOC Analyst Incident Response Runbook](#-soc-analyst-incident-response-runbook)
+- [📊 SOC KPI Executive Dashboards](#-soc-kpi-executive-dashboards)
 - [🔧 Troubleshooting & Operational Runbook](#-troubleshooting--operational-runbook)
 - [🧪 CI/CD, Code Quality & Security Auditing](#-cicd-code-quality--security-auditing)
 - [👤 Author & Portfolio](#-author--portfolio)
@@ -152,6 +156,7 @@ This repository provides a **fully operational, self-contained, enterprise-grade
 | **MISP Core** | `misp` | `8080` (HTTP), `8443` (HTTPS) | `admin@admin.test` / `admin` | Malware Information Sharing Platform, threat feeds, IOC repo |
 | **MISP DB & Cache** | `misp-db`, `misp-redis` | Internal (`3306`, `6379`) | `misp` / `misp_password` | Relational storage and cache supporting MISP |
 | **Ollama** | `ollama` | `11434` | Open API | Air-gapped local LLM inference server (LLaMA 3, Mistral, Phi-3) |
+| **Suricata NIDS** | `suricata` | Internal (`eth0`) | N/A | High-performance Network IDS/IPS sensor streaming EVE JSON telemetry |
 | **AI SOC Engine** | `ai-engine` | `8888` | Open API / CORS | FastAPI microservice with LangChain for structured alert triage |
 
 ---
@@ -754,6 +759,77 @@ python scripts/simulate-attacks.py all --syslog --wazuh-host localhost --wazuh-p
 
 ---
 
+### 🎯 Atomic Red Team Emulation Harness (`scripts/run-atomic-tests.py`)
+
+A dedicated adversary emulation runner wrapping Red Canary's Atomic Red Team techniques to systematically validate detection engineering rules and SOAR response pipelines:
+
+```bash
+# Execute all supported Atomic Red Team tests (Syslog mode):
+python scripts/run-atomic-tests.py --all
+
+# Run specific technique against live host (Linux or Windows):
+python scripts/run-atomic-tests.py --technique T1059.001 --mode live
+
+# Run all tests and verify alert indexing & TheHive case creation:
+python scripts/run-atomic-tests.py --all --verify --timeout 30
+```
+
+#### Supported Atomic Red Team Techniques:
+- **`T1110.001`**: Password Guessing (10 failed SSH logins + 1 accepted authentication)
+- **`T1059.001`**: PowerShell Encoded Command & Download Cradle execution
+- **`T1059.004`**: Unix Shell Obfuscation & Interactive Reverse Shell Simulation
+- **`T1070.003`**: Indicator Removal on Host (Clearing bash history / logs)
+- **`T1548.003`**: Sudoers Tampering & SUID Abuse (`/etc/sudoers` modifications)
+- **`T1046`**: Network Service Port Sweep (TCP SYN scan across 16 ports)
+- **`T1071.004`**: DNS C2 Tunneling (High-entropy base32 TXT record queries)
+- **`T1486`**: Data Encrypted for Impact (Mass `.locked` / `.encrypted` file burst)
+
+---
+
+### 🌐 Network Sensor & Attack PCAP Replay Pipeline
+
+A containerized **Suricata NIDS sensor** monitors the Docker bridge network (`soc-network`), generating real-time `eve.json` telemetry ingested directly by the Wazuh Manager. The lab includes curated attack PCAPs and a traffic generator:
+
+```bash
+# Generate all curated attack PCAPs into pcaps/:
+python scripts/replay-pcap.py --generate-all-pcaps
+
+# Stream live network simulation traffic (DNS C2 tunneling & Cobalt Strike beacons):
+python scripts/replay-pcap.py --scenario all --live-replay
+
+# On Linux / WSL2 using tcpreplay:
+./scripts/replay-pcap.sh eth0 all
+```
+
+Curated attack traffic captures in [`pcaps/`](pcaps/):
+- `cobalt_strike_beacon.pcap`: Malleable HTTP GET/POST C2 heartbeats
+- `dns_tunneling_exfil.pcap`: High-entropy base32 DNS TXT data exfiltration
+- `syn_port_scan.pcap`: Fast TCP SYN reconnaissance scan across 16 critical ports
+- `web_shell_traffic.pcap`: HTTP POST command injection and directory traversal
+
+---
+
+### ⚙️ Sigma-to-Wazuh Rules Engine (`scripts/compile-rules.py`)
+
+An automated translation pipeline converting standard community [Sigma rules](https://github.com/SigmaHQ/sigma) into native Wazuh XML detection rules with PCRE2 regexes, if_groups, and MITRE ATT&CK taxonomy:
+
+```bash
+# Compile all YAML rules in sigma-rules/ to XML:
+python scripts/compile-rules.py --input-dir sigma-rules --output wazuh-config/sigma-rules.xml
+
+# Compile and automatically merge into Wazuh custom-rules.xml:
+python scripts/compile-rules.py --merge-into wazuh-config/custom-rules.xml
+```
+
+The lab ships with 5 standard Sigma rules in [`sigma-rules/`](sigma-rules/):
+1. `proc_creation_win_susp_powershell_download.yml` (`T1059.001`)
+2. `lnx_susp_sudoers_tampering.yml` (`T1548.003`)
+3. `lnx_shell_clear_history.yml` (`T1070.003`)
+4. `net_c2_dns_high_entropy_tunneling.yml` (`T1071.004`)
+5. `web_sql_injection_union_select.yml` (`T1190`)
+
+---
+
 ## 🛡️ Detection Rules as Code & Endpoint Telemetry Templates
 
 Custom detection rules and auditing configurations are version-controlled in [`wazuh-config/`](wazuh-config/):
@@ -770,6 +846,11 @@ Custom detection rules and auditing configurations are version-controlled in [`w
 | `100006` | **15** | CRITICAL: Ransomware activity detected - mass file modification (`.encrypted`) | `ransomware` | `T1486` (Data Encrypted for Impact) |
 | `100007` | **12** | NTLM network logon detected - possible pass-the-hash attack | `credential_theft` | `T1550.002` (Pass the Hash) |
 | `100008` | **9** | Abnormally long DNS query length - possible DNS tunneling | `dns_tunneling` | `T1071.004` (Application Protocol: DNS) |
+| `100020` | **8** | [Sigma] Shell Command History Cleared | `sigma`, `linux` | `T1070.003` (Clear History) |
+| `100021` | **12** | [Sigma] Unauthorized Sudoers File Tampering | `sigma`, `auditd` | `T1548.003` (Sudoers Tampering) |
+| `100022` | **12** | [Sigma] DNS Tunneling High Entropy Queries | `sigma`, `zeek`, `dns` | `T1071.004` (DNS C2 Tunneling) |
+| `100023` | **12** | [Sigma] Suspicious PowerShell Download Cradle | `sigma`, `windows` | `T1059.001` (PowerShell Cradle) |
+| `100024` | **14** | [Sigma] Web Application SQL Injection via UNION SELECT | `sigma`, `webserver` | `T1190` (SQL Injection) |
 
 ### Hardened Endpoint Auditing Templates:
 - [`wazuh-config/ossec.conf`](wazuh-config/ossec.conf): Reference Wazuh Manager configuration with Shuffle webhook `<integration>` and automated `<active-response>` definitions (`firewall-drop`).
@@ -805,6 +886,32 @@ When an incident is escalated into TheHive 5, analysts adhere to the following w
    - Terminate malicious processes and remove persistence mechanisms (cron jobs, registry keys).
    - Restore affected systems from verified, clean backups.
    - Document lessons learned and update Wazuh detection rules to prevent recurrence.
+
+---
+
+## 📊 SOC KPI Executive Dashboards
+
+The lab provides pre-configured dashboards in [`dashboards/`](dashboards/) for OpenSearch Dashboards (Wazuh Dashboard) and Grafana to track operational efficiency:
+
+```text
+dashboards/
+├── opensearch_soc_kpi_dashboard.ndjson  # OpenSearch Dashboards export
+├── grafana-soc-kpi.json                 # Grafana dashboard export
+└── README.md                            # Import walkthrough & metric definitions
+```
+
+### Visualizations & KPI Metrics:
+- **Mean Time to Detect (MTTD)**: Measures pipeline processing and rule evaluation latency.
+- **Mean Time to Acknowledge (MTTA)**: Tracks alert-to-triage response velocity (sub-second with the local AI Engine).
+- **MITRE ATT&CK Matrix Distribution**: Visualizes alert frequency across Initial Access, Execution, Persistence, Privilege Escalation, C2, and Impact.
+- **Alert Fidelity Ratio**: High-severity actionable incidents (Levels 10-15) vs routine telemetry.
+- **Top Noisy Rules**: Pinpoints candidates for whitelisting and baseline tuning.
+- **AI Triage Ratio**: Tracks automated closed vs escalated tickets.
+
+#### Importing into Wazuh Dashboard:
+1. Open Wazuh Dashboard (`https://localhost:443`) → **Stack Management** → **Saved Objects**.
+2. Click **Import** → upload `dashboards/opensearch_soc_kpi_dashboard.ndjson`.
+3. Open **Dashboards** → select **📊 SOC Executive KPI & MITRE Operations Dashboard**.
 
 ---
 

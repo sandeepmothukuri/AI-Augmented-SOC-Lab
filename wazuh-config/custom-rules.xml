@@ -1,10 +1,8 @@
-<!-- Custom Wazuh rules for AI-SOC Lab -->
+<?xml version="1.0" ?>
 <group name="ai-soc,custom">
-
-  <!-- SSH Brute Force with successful login -->
   <rule id="100001" level="13">
     <if_matched_group>authentication_failed</if_matched_group>
-    <same_source_ip />
+    <same_source_ip/>
     <occurrence>5</occurrence>
     <timeframe>120</timeframe>
     <description>SSH brute force attack detected: multiple failures then success</description>
@@ -13,8 +11,6 @@
       <id>T1110</id>
     </mitre>
   </rule>
-
-  <!-- Privilege Escalation via sudo -->
   <rule id="100002" level="12">
     <if_group>sudo</if_group>
     <match>NOT in sudoers</match>
@@ -24,8 +20,6 @@
       <id>T1068</id>
     </mitre>
   </rule>
-
-  <!-- Web shell detection -->
   <rule id="100003" level="14">
     <if_group>web</if_group>
     <regex type="pcre2">(?i)(cmd\.exe|powershell|/bin/sh|/bin/bash|passthru|shell_exec|system\(|exec\()</regex>
@@ -35,11 +29,9 @@
       <id>T1505.003</id>
     </mitre>
   </rule>
-
-  <!-- Suspicious outbound connection volume -->
   <rule id="100004" level="10">
     <if_group>firewall</if_group>
-    <same_source_ip />
+    <same_source_ip/>
     <occurrence>100</occurrence>
     <timeframe>60</timeframe>
     <description>High volume outbound connections - potential C2 or data exfiltration</description>
@@ -48,8 +40,6 @@
       <id>T1041</id>
     </mitre>
   </rule>
-
-  <!-- New user creation outside business hours -->
   <rule id="100005" level="11">
     <if_group>useradd</if_group>
     <time>22:00 - 06:00</time>
@@ -59,8 +49,6 @@
       <id>T1136</id>
     </mitre>
   </rule>
-
-  <!-- Ransomware indicators - mass file modification -->
   <rule id="100006" level="15">
     <if_group>syscheck</if_group>
     <same_field>file.path</same_field>
@@ -73,8 +61,6 @@
       <id>T1486</id>
     </mitre>
   </rule>
-
-  <!-- Pass-the-hash / NTLM relay -->
   <rule id="100007" level="12">
     <if_group>windows,authentication</if_group>
     <match>LogonType: 3</match>
@@ -85,8 +71,6 @@
       <id>T1550.002</id>
     </mitre>
   </rule>
-
-  <!-- DNS query anomaly -->
   <rule id="100008" level="9">
     <decoded_as>zeek</decoded_as>
     <field name="dns.query_length" type="pcre2">[4-9]\d|[1-9]\d{2,}</field>
@@ -96,5 +80,52 @@
       <id>T1071.004</id>
     </mitre>
   </rule>
-
+  <rule id="100020" level="8">
+    <regex type="pcre2">(?i)(history\ \-c|rm\ \*bash_history|rm\ \-f\ \~/\.bash_history|unset\ HISTFILE|export\ HISTSIZE=0|shopt\ \-u\ \-o\ history)</regex>
+    <description>[Sigma] Shell Command History Cleared</description>
+    <group>sigma,custom,linux</group>
+    <mitre>
+      <id>T1070.003</id>
+    </mitre>
+  </rule>
+  <rule id="100021" level="12">
+    <if_group>auditd</if_group>
+    <regex type="pcre2">(?i)(/etc/sudoers|/etc/sudoers\.d/)</regex>
+    <match>echo</match>
+    <description>[Sigma] Unauthorized Sudoers File Tampering</description>
+    <group>sigma,custom,linux,auditd</group>
+    <mitre>
+      <id>T1548.003</id>
+    </mitre>
+  </rule>
+  <rule id="100022" level="12">
+    <decoded_as>zeek</decoded_as>
+    <match>TXT</match>
+    <field name="dns.query_length" type="pcre2">[4-9]\d|[1-9]\d{2,}</field>
+    <description>[Sigma] DNS Tunneling High Entropy Queries</description>
+    <group>sigma,custom,zeek,dns</group>
+    <mitre>
+      <id>T1071.004</id>
+    </mitre>
+  </rule>
+  <rule id="100023" level="12">
+    <if_group>windows,sysmon_process_creation</if_group>
+    <regex type="pcre2">(?i)(\\powershell\.exe|\\pwsh\.exe)</regex>
+    <regex type="pcre2">(?i)(DownloadString|DownloadFile|Invoke\-WebRequest|Net\.WebClient|iwr|curl)</regex>
+    <description>[Sigma] Suspicious PowerShell Download Cradle</description>
+    <group>sigma,custom,windows,process_creation</group>
+    <mitre>
+      <id>T1059.001</id>
+    </mitre>
+  </rule>
+  <rule id="100024" level="14">
+    <if_group>web,accesslog</if_group>
+    <match>GET</match>
+    <regex type="pcre2">(?i)(UNION\ SELECT|UNION\ ALL\ SELECT|ORDER\ BY\ 1\-\-|AND\ 1=1|OR\ 1=1)</regex>
+    <description>[Sigma] Web Application SQL Injection via UNION SELECT</description>
+    <group>sigma,custom,webserver</group>
+    <mitre>
+      <id>T1190</id>
+    </mitre>
+  </rule>
 </group>

@@ -1,0 +1,26 @@
+title: Shell Command History Cleared
+id: c5d6e7f8-a9b0-4c1d-8e2f-3a4b5c6d7e8f
+status: test
+description: Detects attempts to clear command history to hinder forensic analysis
+references:
+  - https://attack.mitre.org/techniques/T1070/003/
+author: Sandeep Mothukuri
+date: 2026/09/29
+tags:
+  - attack.defense_evasion
+  - attack.t1070.003
+logsource:
+  product: linux
+detection:
+  selection:
+    CommandLine|contains:
+      - 'history -c'
+      - 'rm *bash_history'
+      - 'rm -f ~/.bash_history'
+      - 'unset HISTFILE'
+      - 'export HISTSIZE=0'
+      - 'shopt -u -o history'
+  condition: selection
+falsepositives:
+  - Rare administrative privacy maintenance
+level: medium

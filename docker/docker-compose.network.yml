@@ -1,0 +1,24 @@
+# AI-Augmented SOC Lab - Tier 6: Network Sensor & IDS (Suricata)
+services:
+  suricata:
+    image: jasonish/suricata:latest
+    hostname: suricata
+    container_name: suricata
+    restart: always
+    environment:
+      - SURICATA_OPTIONS=-i eth0
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+      - SYS_NICE
+    volumes:
+      - suricata-logs:/var/log/suricata
+    networks:
+      - soc-network
+
+networks:
+  soc-network:
+    external: true
+
+volumes:
+  suricata-logs:

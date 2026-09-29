@@ -1,0 +1,119 @@
+{
+  "name": "Wazuh Alert → AI Triage → TheHive 5 Case Creation",
+  "description": "Production SOAR pipeline: Ingests Wazuh alert via webhook, normalizes fields, queries MISP for threat context, submits to local AI Engine for LLM triage and playbook generation, and opens an actionable case in TheHive 5.",
+  "triggers": [
+    {
+      "name": "Wazuh Alert Webhook",
+      "type": "WEBHOOK",
+      "parameters": {
+        "filter": "rule.level >= 7"
+      }
+    }
+  ],
+  "actions": [
+    {
+      "id": "normalize_wazuh_alert",
+      "name": "Normalize Wazuh Alert",
+      "app": "Shuffle Tools",
+      "action": "execute_python",
+      "parameters": {
+        "code": "alert = execution_argument\nrule = alert.get('rule', {})\nagent = alert.get('agent', {})\ndata = alert.get('data', {})\nreturn {\n  'alert_id': alert.get('id', 'N/A'),\n  'timestamp': alert.get('timestamp', ''),\n  'rule_id': str(rule.get('id', '')),\n  'rule_description': rule.get('description', 'Unknown Alert'),\n  'wazuh_level': rule.get('level', 5),\n  'mitre_ids': rule.get('mitre', {}).get('id', []),\n  'hostname': agent.get('name', 'unknown-host'),\n  'agent_ip': agent.get('ip', ''),\n  'agent_id': agent.get('id', ''),\n  'src_ip': data.get('srcip', ''),\n  'dst_ip': data.get('dstip', ''),\n  'raw_log': alert.get('full_log', '')\n}"
+      }
+    },
+    {
+      "id": "misp_threat_enrichment",
+      "name": "MISP Threat Intel Lookup",
+      "app": "MISP",
+      "action": "search_ioc",
+      "parameters": {
+        "value": "$normalize_wazuh_alert.src_ip",
+        "type": "ip-src"
+      }
+    },
+    {
+      "id": "call_ai_engine_triage",
+      "name": "AI Engine Alert Triage",
+      "app": "HTTP",
+      "action": "POST",
+      "parameters": {
+        "url": "http://ai-engine:8888/analyze",
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "alert_id": "$normalize_wazuh_alert.alert_id",
+          "source": "wazuh",
+          "rule_id": "$normalize_wazuh_alert.rule_id",
+          "rule_description": "$normalize_wazuh_alert.rule_description",
+          "severity": "$normalize_wazuh_alert.wazuh_level",
+          "source_ip": "$normalize_wazuh_alert.src_ip",
+          "dest_ip": "$normalize_wazuh_alert.dst_ip",
+          "hostname": "$normalize_wazuh_alert.hostname",
+          "timestamp": "$normalize_wazuh_alert.timestamp",
+          "raw_log": "$normalize_wazuh_alert.raw_log",
+          "misp_context": "$misp_threat_enrichment"
+        }
+      }
+    },
+    {
+      "id": "fetch_ai_playbook",
+      "name": "Fetch Grounded Playbook",
+      "app": "HTTP",
+      "action": "POST",
+      "parameters": {
+        "url": "http://ai-engine:8888/playbook",
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "alert_type": "$normalize_wazuh_alert.rule_description",
+          "context": "Source IP: $normalize_wazuh_alert.src_ip | Host: $normalize_wazuh_alert.hostname"
+        }
+      }
+    },
+    {
+      "id": "check_escalate_condition",
+      "name": "Evaluate Triage Verdict",
+      "app": "Shuffle Tools",
+      "action": "filter",
+      "parameters": {
+        "field": "$call_ai_engine_triage.verdict",
+        "check": "in",
+        "value": "['ESCALATE', 'ENRICH']"
+      }
+    },
+    {
+      "id": "create_thehive_case",
+      "name": "Create TheHive 5 Case",
+      "app": "TheHive",
+      "action": "create_case",
+      "parameters": {
+        "title": "[$call_ai_engine_triage.severity_normalized] $normalize_wazuh_alert.rule_description ($normalize_wazuh_alert.hostname)",
+        "description": "## AI-Triaged Security Incident\n\n- **Alert ID**: `$normalize_wazuh_alert.alert_id`\n- **Rule**: `$normalize_wazuh_alert.rule_id` - `$normalize_wazuh_alert.rule_description`\n- **Affected Host**: `$normalize_wazuh_alert.hostname` (`$normalize_wazuh_alert.agent_ip`)\n- **Attacker IP**: `$normalize_wazuh_alert.src_ip`\n\n### AI Engine Assessment\n- **Verdict**: `$call_ai_engine_triage.verdict`\n- **Confidence**: `$call_ai_engine_triage.confidence`\n- **Severity**: `$call_ai_engine_triage.severity_normalized`\n- **MITRE Tactic / Technique**: `$call_ai_engine_triage.mitre_tactic` / `$call_ai_engine_triage.mitre_technique`\n\n### AI Analyst Briefing\n$call_ai_engine_triage.summary\n\n### Response Recommendation\n$call_ai_engine_triage.response_recommendation",
+        "severity": 3,
+        "tags": [
+          "wazuh",
+          "ai-triage",
+          "$call_ai_engine_triage.severity_normalized",
+          "$call_ai_engine_triage.mitre_technique"
+        ],
+        "tlp": 2,
+        "flag": false
+      },
+      "requires": "check_escalate_condition"
+    },
+    {
+      "id": "attach_playbook_tasks",
+      "name": "Attach Playbook Tasks",
+      "app": "TheHive",
+      "action": "create_task",
+      "parameters": {
+        "case_id": "$create_thehive_case.id",
+        "title": "Execute Incident Response Playbook",
+        "description": "$fetch_ai_playbook.steps",
+        "group": "Containment & Remediation"
+      },
+      "requires": "create_thehive_case"
+    }
+  ]
+}

@@ -1,11 +1,9 @@
-version: '3.8'
-
 # AI-Augmented SOC Lab - Unified Master Docker Compose
-# Deploys Wazuh SIEM, TheHive 5, Cortex, Shuffle SOAR, MISP, Ollama, and AI SOC Engine.
+# Deploys Wazuh SIEM, Suricata NIDS, TheHive 5, Cortex, Shuffle SOAR, MISP, Ollama, and AI SOC Engine.
 
 services:
   # ============================================================================
-  # TIER 1: SIEM & ENDPOINT TELEMETRY (WAZUH)
+  # TIER 1: SIEM & ENDPOINT/NETWORK TELEMETRY (WAZUH & SURICATA)
   # ============================================================================
   wazuh-manager:
     image: wazuh/wazuh-manager:4.7.3
@@ -37,6 +35,7 @@ services:
       - wazuh-agentless:/var/ossec/agentless
       - wazuh-wodles:/var/ossec/wodles
       - ./wazuh-config/custom-rules.xml:/var/ossec/etc/rules/local_rules.xml
+      - suricata-logs:/var/log/suricata:ro
     networks:
       - soc-network
 
@@ -76,6 +75,22 @@ services:
       - DASHBOARD_PASSWORD=kibanaserver
     depends_on:
       - wazuh-indexer
+    networks:
+      - soc-network
+
+  suricata:
+    image: jasonish/suricata:latest
+    hostname: suricata
+    container_name: suricata
+    restart: always
+    environment:
+      - SURICATA_OPTIONS=-i eth0
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+      - SYS_NICE
+    volumes:
+      - suricata-logs:/var/log/suricata
     networks:
       - soc-network
 
@@ -337,7 +352,8 @@ networks:
     driver: bridge
 
 volumes:
-  # Wazuh
+  # Wazuh & Suricata
+  suricata-logs:
   wazuh-api-configuration:
   wazuh-etc:
   wazuh-logs:
