@@ -1,0 +1,130 @@
+{
+  "name": "Web Attack → WAF Block → AI Triage → TheHive Case",
+  "description": "Triggered by Wazuh web attack alerts (SQL injection, XSS, web shell, path traversal). Checks source IP in MISP, runs AI triage, blocks at WAF, and creates a TheHive case with full context.",
+  "triggers": [
+    {
+      "name": "Wazuh Web Attack Webhook",
+      "type": "WEBHOOK",
+      "parameters": {
+        "filter": "rule.groups CONTAINS 'web' OR rule.groups CONTAINS 'sql' OR rule.groups CONTAINS 'webshell' OR rule.id IN ['31103','31108','31110','31166','31168','99001','99002']"
+      }
+    }
+  ],
+  "actions": [
+    {
+      "id": "parse_alert",
+      "name": "Parse Web Alert",
+      "app": "Shuffle Tools",
+      "action": "execute_python",
+      "parameters": {
+        "code": "alert = execution_argument\nreturn {\n  'alert_id': alert.get('id', 'unknown'),\n  'source_ip': alert.get('data', {}).get('srcip', alert.get('agent', {}).get('ip', '')),\n  'hostname': alert.get('agent', {}).get('name', ''),\n  'url': alert.get('data', {}).get('url', ''),\n  'http_method': alert.get('data', {}).get('method', 'GET'),\n  'user_agent': alert.get('data', {}).get('ua', ''),\n  'rule_id': alert.get('rule', {}).get('id', ''),\n  'rule_description': alert.get('rule', {}).get('description', ''),\n  'severity': alert.get('rule', {}).get('level', 9),\n  'timestamp': alert.get('timestamp', '')\n}"
+      }
+    },
+    {
+      "id": "misp_ip_lookup",
+      "name": "MISP Source IP Lookup",
+      "app": "MISP",
+      "action": "search_ioc",
+      "parameters": {
+        "value": "$parse_alert.source_ip",
+        "type": "ip-src"
+      }
+    },
+    {
+      "id": "abuseipdb_check",
+      "name": "AbuseIPDB Reputation Check",
+      "app": "HTTP",
+      "action": "GET",
+      "parameters": {
+        "url": "https://api.abuseipdb.com/api/v2/check?ipAddress=$parse_alert.source_ip&maxAgeInDays=30",
+        "headers": {
+          "Key": "$ENV.ABUSEIPDB_API_KEY",
+          "Accept": "application/json"
+        }
+      }
+    },
+    {
+      "id": "ai_triage",
+      "name": "AI Engine Triage",
+      "app": "HTTP",
+      "action": "POST",
+      "parameters": {
+        "url": "http://ai-engine:8888/analyze",
+        "headers": {"Content-Type": "application/json"},
+        "body": {
+          "alert_id": "$parse_alert.alert_id",
+          "source": "wazuh",
+          "rule_id": "$parse_alert.rule_id",
+          "rule_description": "$parse_alert.rule_description",
+          "severity": "$parse_alert.severity",
+          "source_ip": "$parse_alert.source_ip",
+          "url": "$parse_alert.url",
+          "timestamp": "$parse_alert.timestamp",
+          "misp_context": "$misp_ip_lookup",
+          "abuse_score": "$abuseipdb_check.data.abuseConfidenceScore"
+        }
+      }
+    },
+    {
+      "id": "get_playbook",
+      "name": "Fetch IR Playbook",
+      "app": "HTTP",
+      "action": "POST",
+      "parameters": {
+        "url": "http://ai-engine:8888/playbook",
+        "headers": {"Content-Type": "application/json"},
+        "body": {
+          "alert_type": "$parse_alert.rule_description",
+          "context": "Source IP: $parse_alert.source_ip | URL: $parse_alert.url | UA: $parse_alert.user_agent"
+        }
+      }
+    },
+    {
+      "id": "waf_block",
+      "name": "Block IP at WAF / Firewall",
+      "app": "HTTP",
+      "action": "PUT",
+      "parameters": {
+        "url": "https://wazuh-manager:55000/active-response",
+        "headers": {
+          "Authorization": "Bearer $ENV.WAZUH_API_TOKEN",
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "command": "firewall-drop",
+          "arguments": ["-"],
+          "alert": {"data": {"srcip": "$parse_alert.source_ip"}}
+        }
+      },
+      "condition": "$ai_triage.verdict == 'ESCALATE' OR $ai_triage.severity_normalized IN ['HIGH', 'CRITICAL']"
+    },
+    {
+      "id": "thehive_case",
+      "name": "Create TheHive Case",
+      "app": "TheHive",
+      "action": "create_case",
+      "parameters": {
+        "title": "[WEB] $parse_alert.rule_description from $parse_alert.source_ip",
+        "description": "## Web Attack Alert\n\n**Source IP**: $parse_alert.source_ip\n**Target URL**: $parse_alert.url\n**Method**: $parse_alert.http_method\n**User-Agent**: $parse_alert.user_agent\n**Wazuh Rule**: $parse_alert.rule_id — $parse_alert.rule_description\n**Timestamp**: $parse_alert.timestamp\n\n### AI Triage Result\n- **Verdict**: $ai_triage.verdict\n- **Confidence**: $ai_triage.confidence\n- **Severity**: $ai_triage.severity_normalized\n- **MITRE**: $ai_triage.mitre_tactic / $ai_triage.mitre_technique\n- **Reasoning**: $ai_triage.response_recommendation\n\n### Threat Intelligence\n- **MISP Hit**: $misp_ip_lookup\n- **AbuseIPDB Score**: $abuseipdb_check.data.abuseConfidenceScore",
+        "severity": 2,
+        "tags": ["web-attack", "ai-detected", "wazuh", "$parse_alert.source_ip"],
+        "tlp": 2,
+        "template": "AI-SOC: Web Attack"
+      },
+      "condition": "$ai_triage.verdict != 'CLOSE'"
+    },
+    {
+      "id": "add_playbook_task",
+      "name": "Add Playbook as TheHive Task",
+      "app": "TheHive",
+      "action": "create_task",
+      "parameters": {
+        "case_id": "$thehive_case.id",
+        "title": "AI-Generated IR Playbook",
+        "description": "$get_playbook.steps",
+        "group": "Response"
+      },
+      "requires": "thehive_case"
+    }
+  ]
+}

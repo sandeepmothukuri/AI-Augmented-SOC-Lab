@@ -73,3 +73,26 @@ def test_lookup_runbook_finds_matching_guide(analyzer):
 
 def test_lookup_runbook_returns_none_for_unknown(analyzer):
     assert analyzer._lookup_runbook("unknown generic event") is None
+
+
+def test_lookup_runbook_privilege_escalation(analyzer):
+    pe = analyzer._lookup_runbook("sudo privilege escalation attempt detected")
+    assert pe is not None
+    assert pe["category"] == "privilege_escalation"
+    assert "T1068" in pe["mitre_techniques"]
+    assert len(pe["containment_steps"]) > 0
+    assert len(pe["remediation_steps"]) > 0
+
+    suid = analyzer._lookup_runbook("suid binary abuse on /usr/bin/bash")
+    assert suid is not None
+    assert suid["category"] == "privilege_escalation"
+
+
+def test_lookup_runbook_web_attack_variants(analyzer):
+    xss = analyzer._lookup_runbook("XSS payload injected via query parameter")
+    assert xss is not None
+    assert xss["category"] == "web_attack"
+
+    sqli = analyzer._lookup_runbook("SQL injection attempt on /login endpoint")
+    assert sqli is not None
+    assert sqli["category"] == "web_attack"

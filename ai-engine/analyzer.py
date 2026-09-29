@@ -205,8 +205,14 @@ class AlertAnalyzer:
             "ransomware": "malware_ransomware.json",
             "sql": "web_attack.json",
             "web shell": "web_attack.json",
+            "xss": "web_attack.json",
+            "path traversal": "web_attack.json",
             "exfiltration": "data_exfiltration.json",
             "dns": "data_exfiltration.json",
+            "privilege escalation": "privilege_escalation.json",
+            "sudo": "privilege_escalation.json",
+            "suid": "privilege_escalation.json",
+            "setuid": "privilege_escalation.json",
         }
         for keyword, filename in mapping.items():
             if keyword in query:

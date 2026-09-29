@@ -133,5 +133,65 @@
         "group": "Closure"
       }
     ]
+  },
+  {
+    "name": "AI-SOC: Privilege Escalation",
+    "titlePrefix": "[PRIVESC]",
+    "description": "Template for privilege escalation incidents detected via Wazuh auditd, Sysmon Event 4672, or sudo abuse",
+    "severity": 3,
+    "tags": ["privilege-escalation", "lateral-movement", "ai-detected", "T1068", "T1548"],
+    "tlp": 2,
+    "tasks": [
+      {
+        "title": "Lock compromised account",
+        "description": "Immediately disable the account used for escalation. Linux: `passwd -l <user>`. Windows: `Disable-ADAccount -Identity <user>`.",
+        "group": "Containment"
+      },
+      {
+        "title": "Revoke elevated privileges",
+        "description": "Remove from sudoers, wheel group, Administrators, or Domain Admins. Document all changes.",
+        "group": "Containment"
+      },
+      {
+        "title": "Kill active sessions",
+        "description": "Terminate all active sessions for the escalated account: `pkill -u <user>` (Linux) or `logoff <session_id>` (Windows).",
+        "group": "Containment"
+      },
+      {
+        "title": "Identify the exploit or misconfiguration used",
+        "description": "Review auditd / Sysmon logs for the syscall, binary, or CVE. Check for SUID abuse, sudo token reuse, or kernel exploit.",
+        "group": "Investigation"
+      },
+      {
+        "title": "Trace process lineage",
+        "description": "Walk the parent process chain from the escalating process back to initial access.",
+        "group": "Investigation"
+      },
+      {
+        "title": "Search for persistence",
+        "description": "After escalation, check cron, systemd timers, ~/.bashrc, /etc/rc.local, startup registry keys, and SSH authorized_keys.",
+        "group": "Investigation"
+      },
+      {
+        "title": "Check for lateral movement",
+        "description": "Review SSH, RDP, SMB, and WMI connections from affected host post-escalation.",
+        "group": "Investigation"
+      },
+      {
+        "title": "Patch exploited vulnerability",
+        "description": "Apply patch for the CVE (kernel, sudo, polkit, etc.) or harden the misconfiguration.",
+        "group": "Remediation"
+      },
+      {
+        "title": "Rotate all credentials touched by escalated session",
+        "description": "Rotate SSH keys, service account passwords, API tokens accessible via the escalated session.",
+        "group": "Remediation"
+      },
+      {
+        "title": "Write incident report with MITRE mapping",
+        "description": "Document technique (T1068/T1078/T1548), timeline, IOCs, affected systems, and actions taken.",
+        "group": "Closure"
+      }
+    ]
   }
 ]

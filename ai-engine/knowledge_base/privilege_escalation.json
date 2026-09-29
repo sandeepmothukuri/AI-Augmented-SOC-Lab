@@ -1,0 +1,50 @@
+{
+  "category": "privilege_escalation",
+  "title": "Privilege Escalation Incident Runbook",
+  "description": "SOC response guide for detected privilege escalation attempts on Linux and Windows endpoints.",
+  "severity": "HIGH",
+  "mitre_techniques": ["T1068", "T1078", "T1548", "T1548.002", "T1134"],
+  "mitre_tactic": "TA0004 - Privilege Escalation",
+  "related_tactics": ["TA0003 - Persistence", "TA0005 - Defense Evasion"],
+  "detection_sources": ["Wazuh auditd", "Sysmon Event ID 4672", "Syslog sudo", "osquery"],
+  "ioc_types": ["process", "user_account", "system_call", "registry_key"],
+  "containment_steps": [
+    "Immediately lock the compromised user account: `passwd -l <username>` (Linux) or `Disable-ADAccount` (Windows)",
+    "Revoke any newly granted sudo/admin privileges: remove from sudoers or strip group membership",
+    "Kill all active sessions for the compromised account: `pkill -u <username>` or `query session` + `logoff`",
+    "Block the source IP at the host firewall if the escalation originated remotely",
+    "Preserve volatile memory: dump running processes and open file handles before any remediation"
+  ],
+  "investigation_steps": [
+    "Review auditd/Sysmon logs for the exact syscall or binary that triggered the escalation (execve, setuid, sudo)",
+    "Check `/etc/sudoers` and `sudoers.d/` for unauthorized entries added since last known-good state",
+    "On Windows: query Security Event Log for 4672 (Special Logon), 4673, 4728, 4732 around the incident timestamp",
+    "Identify parent process chain: how did the escalating process get spawned? Trace back to initial access",
+    "Search for SUID/SGID binaries added or modified: `find / -perm -4000 -type f -newer /tmp/baseline 2>/dev/null`",
+    "Check for new local administrator accounts, unexpected group membership changes, or SSH key injection",
+    "Review cron jobs, systemd timers, and Windows scheduled tasks for persistence mechanisms added post-escalation",
+    "Correlate with MISP for known CVE exploits matching the escalation binary (e.g., polkit, sudo CVE-2021-3156)"
+  ],
+  "remediation_steps": [
+    "Patch the exploited vulnerability (kernel, sudo, polkit, or application) to latest stable version",
+    "Remove unauthorized sudoers entries, SUID bits, and any backdoor accounts",
+    "Rotate all credentials for accounts that touched the escalated session",
+    "Re-audit all privileged group memberships (wheel, sudo, Domain Admins, local Administrators)",
+    "Re-deploy host from clean image if kernel-level exploit is confirmed or rootkit presence is suspected",
+    "Add detection rule for the specific technique used: Wazuh rule, Sigma rule, or auditd watch",
+    "Enable AppArmor or SELinux profiles on affected Linux systems; enable Credential Guard on Windows",
+    "Schedule a privileged access review across all endpoints within 24 hours"
+  ],
+  "escalation_criteria": {
+    "escalate_to_tier3": "Kernel exploit confirmed, rootkit indicators, or domain-wide privilege escalation",
+    "notify_management": "Domain Admin or root compromise on production systems",
+    "legal_hold": "If escalation is part of an insider threat or external breach investigation"
+  },
+  "references": [
+    "MITRE ATT&CK T1068 — https://attack.mitre.org/techniques/T1068/",
+    "MITRE ATT&CK T1078 — https://attack.mitre.org/techniques/T1078/",
+    "MITRE ATT&CK T1548 — https://attack.mitre.org/techniques/T1548/",
+    "CVE-2021-3156 (Baron Samedit sudo) — https://nvd.nist.gov/vuln/detail/CVE-2021-3156",
+    "NSA Privileged Account Management Guide — https://media.defense.gov/2022/Feb/17/2002936170/-1/-1/0/CSI_RESTRICT_PRIVILEGED_ACCOUNTS.PDF"
+  ]
+}

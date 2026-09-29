@@ -1,3 +1,9 @@
+[project]
+name = "ai-augmented-soc-lab"
+version = "1.0.0"
+description = "AI-Augmented SOC Lab — automated alert triage with LangChain, Wazuh, and TheHive"
+requires-python = ">=3.11"
+
 [tool.black]
 line-length = 100
 target-version = ["py311"]
@@ -5,3 +11,11 @@ target-version = ["py311"]
 [tool.flake8]
 max-line-length = 100
 ignore = ["E501", "W503"]
+
+[tool.isort]
+profile = "black"
+line_length = 100
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
